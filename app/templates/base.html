@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AIDoc Hub{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div>
+                <div class="sidebar-header">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="AIDoc Hub Logo" id="app-logo">
+                </div>
+                <nav class="sidebar-nav main-menu">
+                    <a href="{{ url_for('powerautomate.powerautomate_home') }}" class="menu-item">
+                        <img 
+                            src="{{ url_for('static', filename='images/powerautomate.ico') }}"
+                            alt="Ícone de Power Automate"
+                            class="menu-icon"
+                        />
+                        Power Automate
+                    </a>
+                    <a href="{{ url_for('powerbi.powerbi_home') }}" class="menu-item">
+                        <img 
+                            src="{{ url_for('static', filename='images/powerbi.ico') }}"
+                            alt="Ícone de Power BI"
+                            class="menu-icon"
+                        />
+                        Power BI
+                    </a>
+                    <a href="{{ url_for('python.python_home') }}" class="menu-item">
+                        <img 
+                            src="{{ url_for('static', filename='images/python.ico') }}"
+                            alt="Ícone de Python"
+                            class="menu-icon"
+                        />
+                        Python
+                    </a>
+                    <a href="{{ url_for('alteryx.alteryx_home') }}" class="menu-item">
+                        <img 
+                            src="{{ url_for('static', filename='images/alteryx.ico') }}"
+                            alt="Ícone de Alteryx"
+                            class="menu-icon"
+                        />
+                        Alteryx
+                    </a>
+                </nav>
+            </div>
+            <div class="sidebar-footer">
+                <nav class="sidebar-nav">
+                    <a href="#" class="menu-item">
+                        <img 
+                            src="{{ url_for('static', filename='images/setting.png') }}"
+                            alt="Ícone de Configurações"
+                            class="menu-icon"
+                        />
+                        Configurações
+                    </a>
+                    <a href="#" class="menu-item">
+                        <img 
+                            src="{{ url_for('static', filename='images/logout.png') }}"
+                            alt="Ícone de Logout"
+                            class="menu-icon"
+                        />
+                        Logout
+                    </a>
+                </nav>
+            </div>
+        </aside>
+        <div class="main-body">
+            <main id="main-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+</body>
+</html>

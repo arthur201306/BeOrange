@@ -1,0 +1,725 @@
+/* gui/style.css */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #282828; /* Fundo principal escuro */
+    color: #f0f0f0; /* Texto claro padrão */
+    overflow: hidden;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-body {
+    flex-grow: 1; 
+    display: flex; 
+    flex-direction: column; 
+}
+
+#app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+#app-title {
+    font-size: 1.7em;
+    font-weight: 600;
+    margin: 0;
+    color: #e8e8e8;
+}
+
+#app-subtitle {
+    font-size: 0.85em;
+    color: #a0a0a0;
+    margin: 5px 0 0 0;
+}
+#main-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1; /* Ocupa espaço disponível, empurrando ajuda para baixo */
+}
+
+/* Itens do Menu */
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 10px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    color: #d0d0d0;
+    font-weight: 500;
+    font-size: 20px;
+}
+
+.menu-item:hover {
+    background-color: #444444;
+    color: #ffffff;
+}
+
+.menu-item.active {
+    background-color: #0d47a1; /* Azul para item ativo (pode ajustar) */
+    color: #ffffff;
+    font-weight: 500;
+}
+
+/* Ícone do Item de Menu (Placeholder) */
+.menu-icon {
+    margin-right: 15px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-style: normal; 
+    font-weight: bold;
+}
+
+.menu-text {
+    font-size: 1em;
+}
+
+/* Botão de Ajuda */
+#help-button-container {
+     text-align: center; /* Centraliza o botão */
+     padding-top: 20px; /* Espaço acima do botão */
+     border-top: 1px solid #444; /* Linha separadora opcional */
+     margin-top: 20px;
+}
+
+#help-button {
+    background-color: #4f4f4f; /* Fundo do botão de ajuda */
+    color: #e0e0e0; /* Cor do '?' */
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    font-size: 1.4em;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex; /* Permite centralizar texto */
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+#help-button:hover {
+    background-color: #666666;
+}
+
+#main-content {
+    flex-grow: 1; /* Ocupa o resto da largura */
+    padding: 40px;
+    display: flex; /* Para centralizar conteúdo inicial */
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto; /* Adiciona scroll se necessário */
+}
+
+/* Mensagem de Boas Vindas */
+.welcome-message {
+    font-size: 2.8em;
+    font-weight: 700;
+    text-align: center;
+    background: #833178;
+    background: linear-gradient(90deg,rgba(131, 49, 120, 1) 0%, rgba(131, 49, 120, 1) 33%, rgba(25, 90, 250, 1) 64%, rgba(25, 90, 250, 1) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.content-wrapper {
+    width: 100%;
+    height: 100%;
+}
+
+
+
+.content-wrapper { 
+    width: 100%;
+    height: 100%; 
+    display: flex; 
+    justify-content: center;
+    align-items: center;
+}
+
+.pa-panel {
+    background-color: #3c3c3c; /* Tom de cinza para o painel */
+    border-radius: 15px;
+    padding: 25px 35px;
+    position: relative; /* Para botão fechar */
+    color: #f0f0f0;
+    width: 90%; /* Largura do painel */
+    max-width: 700px; /* Largura máxima */
+    height: 90%; /* Altura do painel */
+    max-height: 700px; /* Altura máxima */
+    display: flex;
+    flex-direction: column; /* Organiza conteúdo verticalmente */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.pa-panel-title {
+    text-align: center;
+    font-size: 1.8em;
+    font-weight: 650;
+    margin-bottom: 25px;
+    background: #833178;
+    background: linear-gradient(90deg,rgba(131, 49, 120, 1) 0%, rgba(131, 49, 120, 1) 33%, rgba(25, 90, 250, 1) 64%, rgba(25, 90, 250, 1) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.pa-panel-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.7em;
+    color: #a0a0a0; /* Cor do X */
+    cursor: pointer;
+    line-height: 1;
+    padding: 5px;
+}
+.pa-panel-close-btn:hover {
+    color: #ffffff;
+}
+
+/* Área de Texto Contexto */
+#pa-context {
+    background-color: #282828; /* Fundo mais escuro */
+    border: 1px solid #555; /* Borda sutil */
+    border-radius: 8px;
+    color: #f0f0f0;
+    width: 100%;
+    min-height: 50px; /* Ajuste conforme necessário */
+    max-height: 150px; /* Altura máxima */
+    height: 100px; /* Altura fixa ou flexível? */
+    padding: 12px;
+    margin-bottom: 20px;
+    resize: vertical;
+    box-sizing: border-box; /* Importante */
+    font-size: 0.95em;
+}
+#pa-context::placeholder { /* Estilo do placeholder */
+   color: #888;
+   font-style: italic;
+}
+
+
+/* Seção Número de Fluxos */
+.pa-numflows-section {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Espaço entre label, input, botão */
+    margin-bottom: 15px;
+}
+
+.pa-numflows-section label {
+    font-weight: bold;
+    color: #d0d0d0;
+}
+
+#pa-numflows-input {
+    width: 60px; /* Largura pequena */
+    padding: 8px;
+    background-color: #282828;
+    border: 1px solid #555;
+    border-radius: 5px;
+    color: #f0f0f0;
+    text-align: center;
+    font-size: 1em;
+}
+ /* Remover setas padrão do input number (opcional) */
+#pa-numflows-input::-webkit-outer-spin-button,
+#pa-numflows-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+
+#pa-confirm-numflows-btn {
+    background-color: #555;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 1.1em; /* Tamanho do checkmark (placeholder) */
+}
+ #pa-confirm-numflows-btn:hover {
+      background-color: #666;
+ }
+
+/* Container dos Inputs de Arquivo */
+#pa-file-inputs-container {
+    margin-top: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #282828; /* Fundo da área de upload */
+    border-radius: 8px;
+    min-height: 30px; /* Altura mínima */
+    max-height: 100px; /* Altura máxima */
+    flex-grow: 1; /* Ocupa espaço vertical disponível */
+    overflow-y: auto; /* Scroll se muitos arquivos */
+    text-align: center; /* Centraliza placeholder inicial */
+    color: #888; /* Cor do placeholder inicial */
+}
+#pa-file-inputs-container .file-input-item { /* Estilo para cada linha de input */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    text-align: left;
+    padding: 5px;
+     background-color: #3c3c3c;
+     border-radius: 4px;
+}
+ #pa-file-inputs-container .file-input-item label {
+     color: #ccc;
+     font-size: 0.9em;
+ }
+ #pa-file-inputs-container .file-input-item input[type=file] {
+     /* Estilo para o input real (pode ocultar e usar label clicável) */
+     color: #ccc; /* Não funciona em todos browsers */
+ }
+ #pa-file-inputs-container .file-input-item .selected-file-name {
+      font-size: 0.85em;
+      font-style: italic;
+      color: #aaa;
+      margin-left: 10px;
+ }
+
+
+/* Botões Inferiores */
+.pa-footer-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: auto; /* Empurra para o final do flex container */
+    padding-top: 20px; /* Espaço acima */
+    border-top: 1px solid #444; /* Linha separadora opcional */
+}
+
+.pa-circle-button {
+    background-color: #4f4f4f;
+    color: #e0e0e0;
+    border: none;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    font-size: 1.6em; /* Tamanho do ícone (placeholder) */
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+.pa-circle-button:hover {
+    background-color: #666666;
+}
+
+/* Estilo para feedback/status */
+#pa-status {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 0.9em;
+    min-height: 1.2em; /* Reserva espaço */
+}
+
+/* gui/style.css */
+
+/* ... (Estilos anteriores) ... */
+
+/* Ícone de "Em Construção" */
+.construction-icon {
+    font-size: 6em; /* Tamanho grande para o ícone/emoji */
+    text-align: center;
+    margin-top: 40px; /* Espaço abaixo do título */
+    /* Aplicar gradiente ao emoji/texto */
+    background: linear-gradient(to right bottom, #3498db, #833178, #195AFA); /* Ajuste as cores do gradiente do ícone */
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    /* Adicionar animação sutil se desejar */
+    /* animation: pulse 3s infinite ease-in-out; */
+}
+
+/* Ajustar o painel para centralizar conteúdo quando necessário */
+.content-panel { /* Renomeando .pa-panel para algo mais genérico? Ou adicionando esta classe */
+    background-color: #3c3c3c;
+    border-radius: 15px;
+    padding: 25px 35px;
+    position: relative;
+    color: #f0f0f0;
+    width: 90%;
+    max-width: 700px;
+    height: 90%;
+    max-height: 700px;
+    display: flex;
+    flex-direction: column; /* Organiza título, conteúdo, footer */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    text-align: center; /* Centraliza texto por padrão, pode ser sobrescrito */
+}
+
+.panel-content-centered { /* Classe para centralizar o conteúdo principal do painel */
+     flex-grow: 1;
+     display: flex;
+     justify-content: center;
+     align-items: center;
+}
+
+/* Reutilizar título e botão fechar (renomeando classes se necessário) */
+.panel-title {
+    /* (estilo do gradiente do título aqui) */
+     text-align: center;
+    font-size: 1.8em;
+    font-weight: 650;
+    margin-bottom: 25px;
+    background: #833178;
+    background: linear-gradient(90deg,rgba(131, 49, 120, 1) 0%, rgba(131, 49, 120, 1) 40%, rgba(25, 90, 250, 1) 60%, rgba(25, 90, 250, 1) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+ .panel-close-btn {
+     /* (estilo do botão fechar aqui) */
+     position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.7em;
+    color: #a0a0a0;
+    cursor: pointer;
+    line-height: 1;
+    padding: 5px;
+ }
+  .panel-close-btn:hover {
+    color: #ffffff;
+}
+
+/* Estilos para a seção de tipo de template (radio buttons) */
+.template-type-section {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #444; /* Separador opcional */
+}
+
+.template-type-section fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.template-type-section legend {
+    font-weight: bold;
+    color: #d0d0d0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+
+.template-type-section .radio-option {
+    margin-right: 20px;
+    display: inline-block; /* Ou block para ficarem um abaixo do outro */
+    cursor: pointer;
+}
+
+.template-type-section input[type="radio"] {
+    margin-right: 5px;
+    cursor: pointer;
+    /* Estilização customizada de radio pode ser complexa, usar padrão por ora */
+}
+
+ /* Área de Input Condicional Python */
+ #py-input-area {
+     margin-top: 15px;
+     margin-bottom: 20px;
+     padding: 15px;
+     background-color: #282828; /* Mesmo fundo da área de upload PA */
+     border-radius: 8px;
+     min-height: 150px; /* Altura mínima */
+     max-height: 150px; /* Altura máxima */
+     /* flex-grow: 1; -- Removido para evitar que cresça demais inicialmente */
+     overflow-y: auto;
+     color: #ccc;
+ }
+  #py-input-area .mandatory-note {
+     font-size: 0.85em;
+     font-style: italic;
+     color: orange;
+     margin-bottom: 15px;
+     display: block;
+  }
+  /* Reutilizar .file-input-item de PA se o estilo for o mesmo */
+   #py-input-area .file-input-item {
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     margin-bottom: 8px;
+     padding: 5px;
+     background-color: #3c3c3c;
+     border-radius: 4px;
+ }
+  #py-input-area .file-input-item label { color: #ccc; font-size: 0.9em; }
+  #py-input-area .file-input-item input[type=file] { color: #ccc; }
+  #py-input-area .file-input-item .selected-file-name { font-size: 0.85em; font-style: italic; color: #aaa; margin-left: 10px;}
+
+
+ /* Estilos para Seletor de Pasta */
+ .folder-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+ }
+ #py-folder-path { /* Input de texto para mostrar o caminho */
+    flex-grow: 1;
+    padding: 8px;
+    background-color: #555; /* Fundo indicando read-only */
+    border: 1px solid #666;
+    border-radius: 5px;
+    color: #f0f0f0;
+    font-size: 0.9em;
+ }
+ #py-select-folder-btn { /* Botão para abrir diálogo */
+      padding: 8px 15px;
+      background-color: #555;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+ }
+  #py-select-folder-btn:hover { background-color: #666; }
+
+
+
+/* Estilo para o botão/label de seleção (reutilizado/adaptado de .pa-file-label) */
+.select-button-styled {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 15px;
+    background-color: #555; /* Ajuste a cor se necessário para o tema */
+    color: white;
+    cursor: pointer;
+    font-size: 0.9em;
+    text-align: center;
+    border: none; /* Se usar <button> */
+    transition: background-color 0.2s ease;
+}
+.select-button-styled:hover {
+     background-color: #666;
+}
+
+/* Estilo para exibir o caminho/nome selecionado (reutilizado/adaptado de .pa-file-name / .selected-file-name) */
+.selected-path-display {
+    display: inline-block;
+    margin-left: 15px;
+    font-style: italic;
+    color: #aaa;
+    font-size: 0.9em;
+    /* Evitar quebra de linha longa */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px; /* Limite a largura */
+    vertical-align: middle; /* Alinha com o botão */
+}
+
+/* Container para o botão e o texto do caminho */
+.folder-selector-item {
+     padding: 10px 5px;
+     display: flex; /* Alinha botão e texto */
+     align-items: center;
+}
+
+
+/* Estilos para a área de upload PBI */
+.pbi-upload-area {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 30px;
+    background-color: #282828;
+    border-radius: 8px;
+    text-align: center;
+    flex-grow: 1; /* Ocupa espaço vertical */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 2px dashed #444; /* Borda tracejada opcional */
+}
+
+/* Label que funciona como botão de upload, contendo o ícone */
+.pbi-upload-label {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #aaa;
+}
+.pbi-upload-label:hover {
+    color: #fff;
+}
+
+/* Ícone grande de upload (placeholder) */
+.pbi-upload-icon {
+    font-size: 4em; /* Tamanho do ícone */
+    margin-bottom: 10px;
+}
+
+#pbi-selected-file-name {
+    margin-top: 15px;
+    font-style: italic;
+    color: lightgreen;
+}
+
+/* Link de ajuda para o vídeo */
+.pbit-help-link {
+    margin-top: 20px;
+    font-size: 0.9em;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+}
+.pbit-help-link:hover {
+    text-decoration: underline;
+    color: #fff;
+}
+.pbit-help-link .help-q-icon {
+    background-color: #555;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+
+/* ESTILOS PARA O MODAL DE VÍDEO */
+.modal-overlay {
+    display: none; /* Começa oculto */
+    position: fixed; /* Cobre a tela inteira */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8); /* Fundo semi-transparente */
+    z-index: 1000; /* Fica acima de tudo */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+/* Para controlar visibilidade com JS */
+.modal-overlay.visible {
+    display: flex;
+}
+
+.modal-content {
+    background-color: #282828;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 900px;
+    position: relative;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    background-color: #fff;
+    color: #333;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 1.5em;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.dashboard-container {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 260px;
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    flex-shrink: 0;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+}
+
+header {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.logo-image {
+    width: 250px;
+    height: auto;
+}
+
+.sub-message {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.6;
+    margin-top: 2rem;
+    text-align: center;
+    background: linear-gradient(90deg, rgba(131, 49, 120, 1), rgba(25, 90, 250, 1));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.logo-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.failed-message {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-align: center;
+    background: linear-gradient(90deg, rgba(220, 38, 38, 1), rgba(234, 88, 12, 1));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.failed-sub-message {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.6;
+    text-align: center;
+    background: linear-gradient(90deg, rgba(220, 38, 38, 1), rgba(234, 88, 12, 1));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
