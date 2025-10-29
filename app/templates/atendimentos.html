@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM - Atendimentos (Suporte Técnico)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Barra de Navegação Superior (Simplificada) -->
+    <header class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-10">
+        <div class="text-xl font-extrabold text-indigo-700">ByteVision CRM</div>
+        <nav class="flex space-x-6 text-sm font-semibold">
+            <!-- Rotas Flask -->
+            <a href="{{ url_for('main.kanban_board') }}" class="text-gray-600 hover:text-indigo-600 transition duration-150 pb-1">Gestão de Leads</a>
+            <a href="{{ url_for('main.atendimentos_page') }}" class="text-indigo-600 border-b-2 border-indigo-600 pb-1">Atendimentos</a>
+            <a href="{{ url_for('main.negocios_page') }}" class="text-gray-600 hover:text-indigo-600 transition duration-150 pb-1">Central de Negócios</a>
+        </nav>
+        <div class="flex items-center space-x-3">
+            <button class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md text-sm">+ Novo Ticket</button>
+        </div>
+    </header>
+
+    <!-- Área de Conteúdo Principal -->
+    <main class="p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Central de Atendimentos (Suporte Técnico)</h1>
+        
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <p class="text-gray-600 mb-4">Gestão de tickets de suporte para clientes que utilizam os softwares e serviços da BeOrange.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                <!-- Card 1: Tickets Abertos -->
+                <div class="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                    <p class="text-4xl font-extrabold text-red-700">8</p>
+                    <p class="text-sm text-gray-500">Tickets Críticos (Abertos)</p>
+                </div>
+                <!-- Card 2: Em Progresso -->
+                <div class="p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg">
+                    <p class="text-4xl font-extrabold text-yellow-700">12</p>
+                    <p class="text-sm text-gray-500">Em Análise (Equipe)</p>
+                </div>
+                <!-- Card 3: Resolvidos -->
+                <div class="p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
+                    <p class="text-4xl font-extrabold text-green-700">45</p>
+                    <p class="text-sm text-gray-500">Resolvidos (Últimos 7 dias)</p>
+                </div>
+            </div>
+
+            <!-- Lista de Tickets Fictícios (BeOrange Software) -->
+            <div class="mt-8">
+                <h2 class="text-xl font-semibold text-gray-700 mb-3">Fila de Suporte (Mock Data)</h2>
+                <ul class="space-y-3">
+                    <li class="p-3 bg-gray-50 rounded-lg border border-gray-200 flex justify-between items-center">
+                        <div>
+                            <span class="font-medium text-gray-800">#00124 - [Software ERP] Módulo fiscal não calcula imposto</span>
+                            <span class="block text-xs text-gray-500">Cliente: Logística Total | Produto: BeOrange ERP v2.1</span>
+                        </div>
+                        <span class="text-xs font-medium text-red-600 bg-red-100 px-2 py-1 rounded">Crítico (SLA 4h)</span>
+                    </li>
+                    <li class="p-3 bg-gray-50 rounded-lg border border-gray-200 flex justify-between items-center">
+                        <div>
+                            <span class="font-medium text-gray-800">#00123 - [Cloud] Solicitação de aumento de storage (Servidor DB)</span>
+                             <span class="block text-xs text-gray-500">Cliente: Startup XYZ | Produto: BeOrange Cloud Services</span>
+                        </div>
+                        <span class="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded">Infraestrutura</span>
+                    </li>
+                    <li class="p-3 bg-gray-50 rounded-lg border border-gray-200 flex justify-between items-center">
+                        <div>
+                            <span class="font-medium text-gray-800">#00122 - [Software BI] Dúvida sobre criação de dashboard customizado</span>
+                             <span class="block text-xs text-gray-500">Cliente: Financeira Alfa | Produto: BeOrange Analytics</span>
+                        </div>
+                        <span class="text-xs font-medium text-yellow-600 bg-yellow-100 px-2 py-1 rounded">Dúvida (Nível 1)</span>
+                    </li>
+                     <li class="p-3 bg-gray-50 rounded-lg border border-gray-200 flex justify-between items-center">
+                        <div>
+                            <span class="font-medium text-gray-800">#00121 - [App Mobile] Usuário reporta lentidão ao carregar lista</span>
+                             <span class="block text-xs text-gray-500">Cliente: App Prototipagem | Produto: App BeOrange Custom</span>
+                        </div>
+                        <span class="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">Performance (Nível 2)</span>
+                    </li>
+                    <li class="p-3 bg-gray-50 rounded-lg border border-gray-200 flex justify-between items-center">
+                        <div>
+                            <span class="font-medium text-gray-800">#00120 - [Geral] Renovação de Licença (10 usuários)</span>
+                             <span class="block text-xs text-gray-500">Cliente: Pequeno Negócio | Produto: Licenciamento</span>
+                        </div>
+                        <span class="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded">Comercial</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
+
