@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block layout_wrapper %}
+<div class="flex h-full">
+    <aside class="w-64 flex-shrink-0 bg-gray-800 text-white p-4 flex flex-col">
+        <div class="text-2xl font-extrabold text-indigo-400 mb-6">ByteVision CRM</div>
+        <nav class="flex flex-col space-y-2">
+            {% set active_page = request.endpoint %}
+            <a href="{{ url_for('main.kanban_board') }}" 
+               class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'main.kanban_board' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+               Gestão de Leads
+            </a>
+            <a href="{{ url_for('main.client_list_page') }}" 
+               class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'main.client_list_page' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+               Lista de Clientes
+            </a>
+            <a href="{{ url_for('main.atendimentos_page') }}" 
+               class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'main.atendimentos_page' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+               Atendimentos
+            </a>
+            <a href="{{ url_for('main.negocios_page') }}" 
+               class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'main.negocios_page' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+               Central de Negócios
+            </a>
+        </nav>
+        <div class="mt-auto">
+            <a href="{{ url_for('main.set_layout', layout_name='topbar') }}" class="text-sm text-gray-400 hover:text-indigo-300">
+                (Mudar para Barra Superior)
+            </a>
+        </div>
+    </aside>
+    
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white shadow-md p-4 flex justify-end items-center border-b border-gray-200">
+            <button class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md text-sm">+ Novo Lead</button>
+        </header>
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% endblock %}

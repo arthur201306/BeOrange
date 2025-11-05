@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block layout_wrapper %}
+<div class="min-h-full">
+    <header class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-10">
+        <div class="text-xl font-extrabold text-indigo-700">ByteVision CRM</div>
+        <nav class="flex space-x-6 text-sm font-semibold">
+            {% set active_page = request.endpoint %}
+            <a href="{{ url_for('main.kanban_board') }}" 
+               class="pb-1 {% if active_page == 'main.kanban_board' %}text-indigo-600 border-b-2 border-indigo-600{% else %}text-gray-600 hover:text-indigo-600{% endif %}">
+               Gestão de Leads
+            </a>
+            <a href="{{ url_for('main.client_list_page') }}" 
+               class="pb-1 {% if active_page == 'main.client_list_page' %}text-indigo-600 border-b-2 border-indigo-600{% else %}text-gray-600 hover:text-indigo-600{% endif %}">
+               Lista de Clientes
+            </a>
+            <a href="{{ url_for('main.atendimentos_page') }}" 
+               class="pb-1 {% if active_page == 'main.atendimentos_page' %}text-indigo-600 border-b-2 border-indigo-600{% else %}text-gray-600 hover:text-indigo-600{% endif %}">
+               Atendimentos
+            </a>
+            <a href="{{ url_for('main.negocios_page') }}" 
+               class="pb-1 {% if active_page == 'main.negocios_page' %}text-indigo-600 border-b-2 border-indigo-600{% else %}text-gray-600 hover:text-indigo-600{% endif %}">
+               Central de Negócios
+            </a>
+        </nav>
+        <div class="flex items-center space-x-3">
+            <a href="{{ url_for('main.set_layout', layout_name='sidebar') }}" class="text-xs text-gray-500 hover:text-indigo-500" title="Mudar Layout">
+                (Mudar p/ Sidebar)
+            </a>
+            <button class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md text-sm">+ Novo Lead</button>
+        </div>
+    </header>
+    
+    <main class="p-4">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% endblock %}

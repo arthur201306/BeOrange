@@ -1,28 +1,21 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRM - Gestão de Leads (Kanban)</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+{% extends base_template_name %}
+
+{% block title %}Pipeline de Vendas - ByteVision CRM{% endblock %}
+
+{% block head_extra %}
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
         .kanban-board {
-            /* Habilita a rolagem horizontal para o quadro */
             overflow-x: auto;
             white-space: nowrap;
-            /* Permite rolagem vertical dentro do container principal */
-            max-height: calc(100vh - 80px); /* Ajuste baseado na altura do cabeçalho */
+            /* Altura ajustada para caber no layout (topbar ou sidebar) */
+            max-height: calc(100vh - 160px); 
             padding-bottom: 1rem;
         }
         .kanban-column {
             display: inline-block;
             vertical-align: top;
-            width: 300px; /* Largura fixa para colunas */
-            min-height: calc(100vh - 120px); /* Altura mínima para o visual */
+            width: 300px;
+            min-height: calc(100vh - 220px); 
             background-color: #eef2f6;
             margin-right: 1rem;
             white-space: normal;
@@ -37,244 +30,220 @@
             transform: scale(1.01);
         }
         .drag-over {
-            box-shadow: 0 0 0 4px #2563eb inset; /* Borda azul ao arrastar sobre a coluna */
+            box-shadow: 0 0 0 4px #2563eb inset;
         }
-        /* Scrollbar customizada para melhor visibilidade */
         .kanban-board::-webkit-scrollbar { height: 8px; }
         .kanban-board::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .kanban-board::-webkit-scrollbar-track { background: #f1f1f1; }
     </style>
+{% endblock %}
 
-    <!-- Lógica JavaScript Estática (sem Firebase) -->
+
+{% block content %}
+    <h1 class="text-2xl font-semibold text-gray-800 mb-4">Pipeline de Vendas</h1>
+        
+    {% if error %}
+        <div class="text-center text-red-600 font-semibold p-4 bg-red-100 border border-red-300 rounded-lg mb-4">
+            <strong>Erro ao carregar dados:</strong> {{ error }}
+        </div>
+    {% endif %}
+
+    <div id="board-container" class="kanban-board flex p-2">
+        </div>
+
+    <div class="text-center mt-6 text-gray-500 text-sm">
+        Nota: As alterações são salvas automaticamente no servidor.
+    </div>
+{% endblock %}
+
+
+{% block scripts %}
     <script>
-        // --- DADOS ESTÁTICOS DE EXEMPLO (BEORANGE ADAPTADO) ---
-        const staticLeads = [
-            // AGUARDANDO RETORNO (awaiting_return) - 8 leads
-            { id: 'l1', name: 'Carlos Eduardo N.', date: '22/05/2025 09:11', project: 'Website Institucional Básico', value: 3500.00, owner: 'Ana', stage: 'awaiting_return' },
-            { id: 'l2', name: 'Helena Gabrielly (Startup XYZ)', date: '22/05/2025 09:10', project: 'Consultoria de Cloud Computing', value: 15000.00, owner: 'Ana', stage: 'awaiting_return' },
-            { id: 'l3', name: 'Mário L Filho (E-commerce)', date: '22/05/2025 09:08', project: 'Desenvolvimento de Módulo de Pagamento', value: 8000.00, owner: 'Bernardo', stage: 'awaiting_return' },
-            { id: 'l13', name: 'Juliana P. Rodrigues', date: '23/05/2025 10:00', project: 'App Mobile Prototipagem', value: 7200.00, owner: 'Bernardo', stage: 'awaiting_return' },
-            { id: 'l18', name: 'Heygar Casa (Migração de Dados)', date: '22/05/2025 09:07', project: 'Nenhum Projeto Selecionado', value: 0, owner: 'Ana', stage: 'awaiting_return' },
-            { id: 'l19', name: 'Ricardo Alexandre', date: '22/05/2025 09:05', project: 'Manutenção de Servidores (Contrato 1 ano)', value: 12000.00, owner: 'Ana', stage: 'awaiting_return' },
-            { id: 'l20', name: 'Vagner Roberto (ERP Customizado)', date: '22/05/2025 09:05', project: 'Licença Software (3 usuários)', value: 2500.00, owner: 'Bernardo', stage: 'awaiting_return' },
-            { id: 'l21', name: 'Diego Souza', date: '16/05/2025 10:26', project: 'Consultoria Inicial de Segurança', value: 0, owner: 'Bernardo', stage: 'awaiting_return' },
-            
-            // EM ATENDIMENTO (in_service) - 8 leads
-            { id: 'l4', name: 'Gilliard Marcos (Financeira)', date: '12/05/2025 10:48', project: 'Sistema de Gestão de Risco', value: 299900.00, owner: 'Cláudia', stage: 'in_service' },
-            { id: 'l5', name: 'Daniel Wanderson', date: '28/05/2024 10:21', project: 'Refatoração de API Legada', value: 64999.00, owner: 'Cláudia', stage: 'in_service' },
-            { id: 'l6', name: 'Junior Nacci', date: '22/05/2025 09:54', project: 'Suporte Nível 2 - 6 Meses', value: 6000.00, owner: 'Cláudia', stage: 'in_service' },
-            { id: 'l14', name: 'Felipe A. Bastos', date: '01/06/2025 11:30', project: 'Criação de Banco de Dados Postgre', value: 35000.00, owner: 'David', stage: 'in_service' },
-            { id: 'l22', name: 'Teodora de oliveira', date: '06/12/2024 14:34', project: 'Nenhum Serviço Selecionado', value: 3500.00, owner: 'David', stage: 'in_service' },
-            { id: 'l23', name: 'Luana Valim Peteresen (Logística)', date: '29/09/2025 11:47', project: 'Otimização de Roteirização', value: 48000.00, owner: 'Erica', stage: 'in_service' },
-            { id: 'l24', name: 'Marinete', date: '22/08/2025 15:00', project: 'Desenvolvimento de Dashboard BI', value: 19500.00, owner: 'Erica', stage: 'in_service' },
-            { id: 'l25', name: 'Edna (Pequeno Negócio)', date: '22/08/2025 14:58', project: 'Sistema de Estoque Simples', value: 5000.00, owner: 'Fernando', stage: 'in_service' },
+        // --- DADOS DINÂMICOS INJETADOS PELO FLASK ---
+        const initialLeads = {{ all_leads_json | tojson }};
+        const stages = {{ all_stages_json | tojson }};
+        const serverError = {{ error | tojson }};
 
-            // EM VISITA (visiting) - 6 leads
-            { id: 'l7', name: 'Lauro Heck (Grande Corporação)', date: '02/10/2024 15:54', project: 'Análise de Viabilidade Técnica', value: 9999.00, owner: 'David', stage: 'visiting' },
-            { id: 'l8', name: 'Rafael - Int MS', date: '11/07/2025 09:29', project: 'Upgrade de Infraestrutura', value: 49310.00, owner: 'David', stage: 'visiting' },
-            { id: 'l15', name: 'Silvia K. Pires', date: '05/06/2025 14:00', project: 'Treinamento em Python Avancado', value: 6500.00, owner: 'Erica', stage: 'visiting' },
-            { id: 'l26', name: 'Doiane e Augusto', date: '22/01/2025 09:54', project: 'Consultoria de SEO e Marketing', value: 19990.00, owner: 'Erica', stage: 'visiting' },
-            { id: 'l27', name: 'Nelson (Start-up Financiada)', date: '06/12/2024 14:22', project: 'Três Módulos de Software Chave', value: 79990.00, owner: 'Fernando', stage: 'visiting' },
-            { id: 'l28', name: 'Juçara Hoffman', date: '22/01/2025 16:52', project: 'Implementação de CI/CD', value: 7999.00, owner: 'Fernando', stage: 'visiting' },
-
-            // EM PROPOSTA (in_proposal) - 5 leads
-            { id: 'l9', name: 'Maria Clara Torresani', date: '20/05/2025 14:16', project: 'Desenvolvimento de Chatbot para SAC', value: 32000.00, owner: 'Erica', stage: 'in_proposal' },
-            { id: 'l10', name: 'Irene e Fernando', date: '04/05/2025 14:38', project: 'Criação de Landing Page de Alta Conversão', value: 4100.00, owner: 'Erica', stage: 'in_proposal' },
-            { id: 'l16', name: 'Ricardo S. de Souza (Banco)', date: '15/06/2025 17:30', project: 'Segurança de Dados e Penetration Test', value: 180000.00, owner: 'Fernando', stage: 'in_proposal' },
-            { id: 'l29', name: 'Jona e Cleverson', date: '08/09/2024 09:18', project: 'Contrato de Suporte Trimestral', value: 3999.00, owner: 'Fernando', stage: 'in_proposal' },
-            { id: 'l30', name: 'Jociel Marques', date: '06/12/2024 16:22', project: 'Nenhum Projeto Selecionado', value: 0, owner: 'David', stage: 'in_proposal' },
-            
-            // EM CONTRATO (in_contract) - 4 leads
-            { id: 'l17', name: 'Patrícia A. Borges', date: '20/06/2025 09:00', project: 'Sistema de Gestão de Clientes (Fase I)', value: 95000.00, owner: 'Fernando', stage: 'in_contract' },
-            { id: 'l31', name: 'Carolina REF: 7572', date: '06/12/2024 15:41', project: 'Projeto de Integração de Sistemas', value: 94500.00, owner: 'Fernando', stage: 'in_contract' },
-            { id: 'l32', name: 'Antônio José Nogueira', date: '16/04/2025 08:08', project: 'Desenvolvimento de Novo Produto Digital', value: 90000.00, owner: 'David', stage: 'in_contract' },
-            { id: 'l33', name: 'Gisele Cesar', date: '14/11/2024 17:00', project: 'Contrato de Manutenção Premium', value: 31999.00, owner: 'Cláudia', stage: 'in_contract' },
-
-            // FINALIZADO (finished) - 4 leads
-            { id: 'l11', name: 'Romero Ferreira da Silva', date: '23/05/2025 17:06', project: 'Treinamento de Equipe em React', value: 6749.00, owner: 'Fernando', stage: 'finished' },
-            { id: 'l12', name: 'Eduardo Lucas Fink', date: '28/05/2025 17:35', project: 'Criação de Identidade Visual', value: 5000.00, owner: 'David', stage: 'finished' },
-            { id: 'l34', name: 'Mário Cesar Burkhardt', date: '14/10/2024 09:35', project: 'Consultoria Estratégica', value: 0, owner: 'Cláudia', stage: 'finished' },
-            { id: 'l35', name: 'Evandro Weingartner', date: '03/04/2023 11:41', project: 'Serviço de Backup e Recuperação', value: 0, owner: 'Ana', stage: 'finished' }
-        ];
-
-        // --- CONFIGURAÇÃO DO KANBAN (Colunas) ---
-        const stages = [
-            { id: 'awaiting_return', title: 'Aguardando retorno', color: 'bg-blue-500' },
-            { id: 'in_service', title: 'Em atendimento', color: 'bg-yellow-500' },
-            { id: 'visiting', title: 'Em visita / Reunião', color: 'bg-purple-500' },
-            { id: 'in_proposal', title: 'Em proposta', color: 'bg-red-500' },
-            { id: 'in_contract', title: 'Em contrato', color: 'bg-indigo-500' },
-            { id: 'finished', title: 'Finalizado / Fechado', color: 'bg-green-500' }
-        ];
+        if (serverError && !initialLeads.length) {
+            console.error("Erro vindo do Servidor (Python):", serverError);
+        }
 
         // --- FUNÇÕES DE RENDERIZAÇÃO DE DADOS ---
-
         function updateCardCount(stageId) {
             const container = document.getElementById(`cards-${stageId}`);
             const countDisplay = document.getElementById(`count-${stageId}`);
             if (container && countDisplay) {
-                 // Usa o número de filhos (cards) no container
                 countDisplay.textContent = `${container.children.length} clientes/projetos`;
             }
         }
 
+        /**
+         * Cria um card de lead.
+         * IMPORTANTE: Ajuste os nomes (lead.nome, lead.projeto, lead.valor, lead.responsavel) 
+         * para baterem com os nomes das colunas na sua tabela 'clientes'.
+         */
         function createLeadCard(lead) {
             const card = document.createElement('div');
             card.id = `lead-${lead.id}`;
             card.classList.add('lead-card', 'p-4', 'bg-white', 'rounded-lg', 'shadow', 'mb-3', 'hover:shadow-md');
             card.setAttribute('draggable', 'true');
             card.setAttribute('data-lead-id', lead.id);
-            card.setAttribute('data-stage', lead.stage); 
+            card.setAttribute('data-stage', lead.etapa);
 
-            // Formatação do valor (currency)
-            const formattedValue = lead.value ? parseFloat(lead.value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+            const formattedValue = lead.valor ? parseFloat(lead.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+            let displayDate = 'Sem data';
+            if (lead.created_at) {
+                displayDate = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
 
-            // Estrutura do cartão atualizada para se aproximar do design da captura de tela
             card.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
-                    <h3 class="font-semibold text-gray-800 text-sm">${lead.name || 'Novo Cliente'}</h3>
-                    <span class="text-xs text-gray-500">${lead.date || 'Sem data'}</span>
+                    <h3 class="font-semibold text-gray-800 text-sm">${lead.nome || 'Novo Cliente'}</h3>
+                    <span class="text-xs text-gray-500">${displayDate}</span>
                 </div>
-                <p class="text-xs text-gray-600 mb-1 truncate" title="${lead.project}">Projeto: ${lead.project || 'Não especificado'}</p>
+                <p class="text-xs text-gray-600 mb-1 truncate" title="${lead.projeto}">Projeto: ${lead.projeto || 'Não especificado'}</p>
                 <p class="text-sm font-bold text-green-600">${formattedValue}</p>
-                
-                <!-- Nova seção de ícones/status -->
                 <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
-                    <p class="text-xs text-gray-400">Owner: ${lead.owner || 'N/A'}</p>
-                    <div class="flex space-x-1">
-                        <!-- Placeholder Ícone de Atividades (Bolinha Vermelha/Verde, etc) -->
-                        <div class="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center text-white text-xs leading-none cursor-pointer" title="Tarefa Atrasada">!</div>
-                        <!-- Placeholder Ícone de Prioridade/Status -->
-                        <div class="w-4 h-4 rounded-full bg-yellow-400 flex items-center justify-center text-xs leading-none cursor-pointer" title="Alta Prioridade">★</div>
-                    </div>
+                    <p class="text-xs text-gray-400">Owner: ${lead.responsavel || 'N/A'}</p>
+                    <div class="flex space-x-1"></div>
                 </div>
             `;
-
-            // Adiciona listener para o início do arrasto
             card.addEventListener('dragstart', handleDragStart);
             card.addEventListener('dragend', handleDragEnd);
             return card;
         }
 
+        /**
+         * Carrega os leads (vindas do Python) no quadro.
+         */
         function loadLeads() {
-            const leadData = {}; // Estrutura temporária para leads por estágio
+            const leadData = {}; 
             stages.forEach(stage => leadData[stage.id] = []);
 
-            // 1. Limpa os cards existentes (importante para recargas)
-            stages.forEach(stage => {
-                const container = document.getElementById(`cards-${stage.id}`);
-                if (container) container.innerHTML = '';
-            });
+            if (!initialLeads || initialLeads.length === 0) {
+                if(!serverError) console.warn('Nenhum lead recebido do servidor.');
+                stages.forEach(stage => updateCardCount(stage.id));
+                return;
+            }
+            
+            console.log(`Recebidos ${initialLeads.length} leads do servidor.`);
 
-            // 2. Distribui os leads estáticos por estágio
-            staticLeads.forEach(lead => {
-                const stageId = lead.stage || stages[0].id;
+            // Distribui os leads por estágio
+            initialLeads.forEach(lead => {
+                const stageId = lead.etapa;
                 if (leadData[stageId]) {
                     leadData[stageId].push(lead);
+                } else if(stageId) { // Só avisa se a etapa não for nula
+                    console.warn(`Lead ${lead.id} ('${lead.nome}') tem uma etapa desconhecida: '${stageId}'`);
                 }
             });
 
-            // 3. Renderiza os leads em suas respectivas colunas
+            // Renderiza os leads
             stages.forEach(stage => {
                 const container = document.getElementById(`cards-${stage.id}`);
+                if (!container) return;
                 
-                if (!container) return; // Se o container não existe, pula
-
-                // Ordena os leads por data (mais recente primeiro)
-                leadData[stage.id].sort((a, b) => {
-                    const dateA = new Date(a.date.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3'));
-                    const dateB = new Date(b.date.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3'));
-                    return dateB - dateA;
-                });
-
-
+                // Ordena por data (opcional, pois o Python já ordenou)
+                leadData[stage.id].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                
                 leadData[stage.id].forEach(lead => {
                     container.appendChild(createLeadCard(lead));
                 });
-
-                // 4. Atualiza a contagem inicial
                 updateCardCount(stage.id);
             });
         }
 
-        // --- LÓGICA DE DRAG AND DROP (APENAS DOM) ---
-
+        // --- LÓGICA DE DRAG AND DROP (COM API PYTHON) ---
         let draggedLeadId = null;
 
         function handleDragStart(e) {
             draggedLeadId = e.target.getAttribute('data-lead-id');
-            // Salva o ID do lead e do estágio de origem
             e.dataTransfer.setData('text/plain', draggedLeadId); 
             e.dataTransfer.setData('text/stage-origin', e.target.parentElement.id.replace('cards-', ''));
-            // Adiciona classe de opacidade para feedback visual
             setTimeout(() => e.target.classList.add('opacity-50'), 0);
         }
 
         function handleDragEnd(e) {
             e.target.classList.remove('opacity-50');
-            // Remove a classe drag-over de todas as colunas
             document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
         }
 
-        function handleDragOver(e) {
-            e.preventDefault(); // Permite o drop
-        }
+        function handleDragOver(e) { e.preventDefault(); }
+        function handleDragEnter(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+        function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
 
-        function handleDragEnter(e) {
-            e.preventDefault();
-            const column = e.currentTarget;
-            column.classList.add('drag-over');
-        }
-
-        function handleDragLeave(e) {
-            e.currentTarget.classList.remove('drag-over');
-        }
-
-        function handleDrop(e) {
+        /**
+         * Lida com o "drop" do card, chamando a API Python.
+         */
+        async function handleDrop(e) {
             e.preventDefault();
             e.currentTarget.classList.remove('drag-over');
-
             const newStageId = e.currentTarget.getAttribute('data-stage-id');
             const sourceStageId = e.dataTransfer.getData('text/stage-origin');
             const leadId = e.dataTransfer.getData('text/plain');
             const leadToMove = document.getElementById(`lead-${leadId}`);
             
-            if (newStageId && leadToMove) {
+            if (newStageId && leadToMove && newStageId !== sourceStageId) {
                 const destinationContainer = document.getElementById(`cards-${newStageId}`);
-                
                 if (destinationContainer) {
-                    // 1. Move o card no DOM
+                    // 1. Atualização Otimista (move o card visualmente)
                     destinationContainer.appendChild(leadToMove);
-                    
-                    // 2. Atualiza a contagem da coluna de origem e destino
                     if (sourceStageId) updateCardCount(sourceStageId);
                     updateCardCount(newStageId);
-
-                    // 3. Atualiza o atributo data-stage do card
                     leadToMove.setAttribute('data-stage', newStageId);
 
-                    console.log(`Lead ${leadId} movido visualmente para o estágio: ${newStageId}`);
+                    console.log(`Enviando atualização para o servidor: Lead ${leadId} -> ${newStageId}`);
+                    leadToMove.classList.add('opacity-75', 'border-2', 'border-blue-500');
+
+                    // 2. Chama a API Python (Flask)
+                    try {
+                        const response = await fetch("{{ url_for('main.update_lead_stage') }}", {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                lead_id: leadId,
+                                new_stage: newStageId
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        leadToMove.classList.remove('opacity-75', 'border-2', 'border-blue-500');
+
+                        if (!result.success) {
+                            throw new Error(result.error || 'Erro desconhecido no servidor');
+                        }
+                        console.log('Atualização salva no servidor.');
+
+                    } catch (error) {
+                        console.error('Falha ao salvar atualização:', error);
+                        alert('Erro ao salvar. Recarregando a página para garantir a consistência.');
+                        // Desfaz a mudança visual ou recarrega a página
+                        location.reload(); 
+                    }
                 }
             }
-            draggedLeadId = null; // Reset
+            draggedLeadId = null;
         }
 
-        // --- MONTAGEM DO QUADRO (Executa ao carregar o DOM) ---
+        // --- MONTAGEM DO QUADRO ---
         function setupBoard() {
             const boardContainer = document.getElementById('board-container');
-
+            if (!boardContainer) { 
+                console.error("Elemento 'board-container' não encontrado.");
+                return; 
+            }
+            
+            // 'stages' vem da variável injetada pelo Python
             stages.forEach(stage => {
                 const column = document.createElement('div');
                 column.className = 'kanban-column rounded-lg flex flex-col p-4 shadow-lg';
                 column.setAttribute('data-stage-id', stage.id);
-
-                // Listeners de Drag/Drop para a coluna
+                // Adiciona listeners
                 column.addEventListener('dragover', handleDragOver);
                 column.addEventListener('dragenter', handleDragEnter);
                 column.addEventListener('dragleave', handleDragLeave);
                 column.addEventListener('drop', handleDrop);
-
-                // Cabeçalho da Coluna
+                // Cria cabeçalho
                 const header = document.createElement('div');
                 header.className = 'flex justify-between items-center mb-4 pb-2 border-b-2 border-gray-300';
                 header.innerHTML = `
@@ -282,53 +251,23 @@
                         <span class="w-3 h-3 rounded-full ${stage.color} mr-2"></span>
                         <h2 class="font-bold text-sm text-gray-700">${stage.title}</h2>
                     </div>
-                    <span id="count-${stage.id}" class="text-xs font-semibold text-gray-500 px-2 py-1 bg-gray-200 rounded-full">0 clientes/projetos</span>
+                    <span id="count-${stage.id}" class="text-xs font-semibold text-gray-500 px-2 py-1 bg-gray-200 rounded-full">0</span>
                 `;
-
-                // Container dos Cards (permite rolagem vertical dentro da coluna)
+                // Cria container dos cards
                 const cardsContainer = document.createElement('div');
                 cardsContainer.id = `cards-${stage.id}`;
                 cardsContainer.className = 'flex-grow overflow-y-auto pt-2 space-y-3';
-
+                // Monta a coluna
                 column.appendChild(header);
                 column.appendChild(cardsContainer);
                 boardContainer.appendChild(column);
             });
-
-            // Carrega os dados estáticos
+            
+            // Carrega os dados (vindas do 'initialLeads')
             loadLeads();
         }
 
+        // Inicia o app quando o DOM estiver pronto
         document.addEventListener('DOMContentLoaded', setupBoard);
     </script>
-</head>
-<body class="bg-gray-100">
-    <!-- Barra de Navegação Superior (Simplificada) -->
-    <header class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-10">
-        <div class="text-xl font-extrabold text-indigo-700">ByteVision CRM</div>
-        <nav class="flex space-x-6 text-sm font-semibold">
-            <!-- Rotas Flask: usar url_for é a melhor prática em um ambiente de template -->
-            <a href="{{ url_for('main.kanban_board') }}" class="text-indigo-600 border-b-2 border-indigo-600 pb-1">Gestão de Leads</a>
-            <a href="{{ url_for('main.atendimentos_page') }}" class="text-gray-600 hover:text-indigo-600 transition duration-150">Atendimentos</a>
-            <a href="{{ url_for('main.negocios_page') }}" class="text-gray-600 hover:text-indigo-600 transition duration-150">Central de Negócios</a>
-        </nav>
-        <div class="flex items-center space-x-3">
-            <button class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md text-sm">+ Novo Lead</button>
-        </div>
-    </header>
-
-    <!-- Área de Conteúdo Principal -->
-    <main class="p-4">
-        <h1 class="text-2xl font-semibold text-gray-800 mb-4">Pipeline de Vendas (Kanban Estático)</h1>
-        
-        <!-- Container do Quadro Kanban (Rolagem Horizontal) -->
-        <div id="board-container" class="kanban-board flex p-2">
-            <!-- As Colunas são injetadas pelo JavaScript -->
-        </div>
-
-        <div class="text-center mt-6 text-gray-500 text-sm">
-            Nota: Este é um quadro Kanban estático. O arrastar e soltar funciona visualmente, mas **não salva os dados** após o recarregamento da página.
-        </div>
-    </main>
-</body>
-</html>
+{% endblock %}
