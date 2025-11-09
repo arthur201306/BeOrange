@@ -1,42 +1,213 @@
 {% extends "base.html" %}
 
+{% block title %}ByteVision CRM{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* CSS customizado para garantir transições suaves */
+    .sidebar-transition {
+        transition: width 0.3s ease-in-out, padding 0.3s ease-in-out;
+    }
+    /* Otimizamos a transição de texto para focar na opacidade (visual) antes de aplicar 'hidden' (layout) */
+    .text-transition {
+        transition: opacity 0.3s ease-in-out;
+    }
+    .w-64-px { width: 16rem; } /* 256px */
+    .w-20-px { width: 5rem; } /* 80px */
+</style>
+{% endblock %}
+
 {% block layout_wrapper %}
-<div class="flex h-full">
-    <aside class="w-64 flex-shrink-0 bg-gray-800 text-white p-4 flex flex-col">
-        <div class="text-2xl font-extrabold text-indigo-400 mb-6">ByteVision CRM</div>
-        <nav class="flex flex-col space-y-2">
+<div id="app" class="flex h-full overflow-hidden">
+    <!-- Sidebar - Tamanho Inicial (w-64-px) -->
+    <aside id="sidebar" class="w-64-px flex-shrink-0 bg-gray-900 text-white p-4 flex flex-col sidebar-transition shadow-2xl">
+        
+        <!-- Bloco da Logo/Título (ByteVision CRM) -->
+        <div class="mb-8 flex items-center h-12 overflow-hidden border-b border-gray-700/50 pb-4">
+            
+            <!-- Ícone SVG da Logo -->
+            <svg id="logo-icon" xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye flex-shrink-0 text-indigo-400">
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+
+            <!-- Título: ByteVision CRM. Mantido 'ml-3' e 'opacity-100' no estado inicial -->
+            <span id="logo-text" class="text-xl font-bold text-indigo-400 ml-3 whitespace-nowrap text-transition opacity-100">ByteVision CRM</span>
+        </div>
+        
+        <!-- Navegação Principal -->
+        <nav class="flex flex-col space-y-2 flex-1">
+            
             {% set active_page = request.endpoint %}
+            
+            <!-- Gestão de Leads -->
             <a href="{{ url_for('main.kanban_board') }}" 
-               class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'main.kanban_board' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
-               Gestão de Leads
+               class="nav-item px-3 py-2 rounded-lg text-sm font-medium flex items-center transition duration-150 shadow-sm
+               {% if active_page == 'main.kanban_board' %}bg-indigo-600 text-white hover:bg-indigo-700{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+                
+                <!-- Icone de Trello/Kanban. Mantido 'mr-3' no estado inicial. -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trello mr-3 flex-shrink-0"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="7" y="7" width="3" height="9"/><rect x="14" y="7" width="3" height="5"/></svg>
+                <span class="nav-label whitespace-nowrap text-transition opacity-100">Gestão de Leads</span>
             </a>
+
+            <!-- Lista de Clientes -->
             <a href="{{ url_for('main.client_list_page') }}" 
-               class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'main.client_list_page' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
-               Lista de Clientes
+               class="nav-item px-3 py-2 rounded-lg text-sm font-medium flex items-center transition duration-150
+               {% if active_page == 'main.client_list_page' %}bg-indigo-600 text-white hover:bg-indigo-700{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+                
+                <!-- Icone de Usuários. Mantido 'mr-3' no estado inicial. -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users mr-3 flex-shrink-0"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="nav-label whitespace-nowrap text-transition opacity-100">Lista de Clientes</span>
             </a>
-            <a href="{{ url_for('main.atendimentos_page') }}" 
-               class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'main.atendimentos_page' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
-               Atendimentos
+            
+            <!-- Rotas Desativadas -->
+            <a href="#" class="nav-item px-3 py-2 rounded-lg text-sm font-medium text-gray-300 flex items-center hover:bg-gray-700 hover:text-white transition duration-150">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset mr-3 flex-shrink-0"><path d="M10 19l-5 5H4c-1.104 0-2-.896-2-2V4c0-1.104.896-2 2-2h16c1.104 0 2 .896 2 2v10c0 1.104-.896 2-2 2h-1v-4H10z"/></svg>
+                <span class="nav-label whitespace-nowrap text-transition opacity-100">Atendimentos</span>
             </a>
-            <a href="{{ url_for('main.negocios_page') }}" 
-               class="px-3 py-2 rounded-md text-sm font-medium {% if active_page == 'main.negocios_page' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
-               Central de Negócios
+            <a href="#" class="nav-item px-3 py-2 rounded-lg text-sm font-medium text-gray-300 flex items-center hover:bg-gray-700 hover:text-white transition duration-150">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up mr-3 flex-shrink-0"><polyline points="22 7 18 11 12 5 6 17 2 13"/></svg>
+                <span class="nav-label whitespace-nowrap text-transition opacity-100">Central de Negócios</span>
             </a>
+
         </nav>
-        <div class="mt-auto">
-            <a href="{{ url_for('main.set_layout', layout_name='topbar') }}" class="text-sm text-gray-400 hover:text-indigo-300">
-                (Mudar para Barra Superior)
+        
+        <!-- Botão de Toggle e Opção de Layout -->
+        <div class="mt-auto pt-4 border-t border-gray-700/50 flex justify-between items-center">
+             <a href="{{ url_for('main.set_layout', layout_name='topbar') }}" class="text-xs text-gray-500 hover:text-indigo-500" title="Mudar Layout">
+                 <span id="layout-toggle-label" class="nav-label whitespace-nowrap text-transition opacity-100">Mudar p/ Header</span>
             </a>
+
+            <button id="sidebar-toggle" class="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white transition duration-200" aria-label="Toggle Sidebar">
+                <svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
         </div>
     </aside>
     
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <header class="bg-white shadow-md p-4 flex justify-end items-center border-b border-gray-200">
-            <button class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md text-sm">+ Novo Lead</button>
+    <!-- Main Content Area -->
+    <div id="main-content" class="flex-1 flex flex-col overflow-hidden">
+        
+        <!-- Header -->
+        <header class="bg-white shadow-sm p-4 flex justify-between items-center border-b border-gray-200">
+            <h1 class="text-xl font-semibold text-gray-800">{% block page_title %}Gestão de Leads{% endblock %}</h1>
+            {% block header_actions %}
+            <button class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md text-sm">
+                <span class="font-medium">+ Novo Lead</span>
+            </button>
+            {% endblock %}
         </header>
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4">
-            {% block content %}{% endblock %}
+
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+            {% block content %}
+            <div class="p-6 bg-white rounded-xl shadow-lg">
+                <h2 class="text-lg font-medium text-gray-700">Layout de Sidebar Ativo</h2>
+                <p class="mt-2 text-gray-500">O problema de não encolher totalmente deve estar resolvido. Tente clicar no botão de alternância (Toggle) na parte inferior da barra lateral.</p>
+            </div>
+            {% endblock %}
         </main>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const sidebar = document.getElementById('sidebar');
+    const logoText = document.getElementById('logo-text');
+    const logoIcon = document.getElementById('logo-icon'); 
+    const navLabels = document.querySelectorAll('.nav-label');
+    const toggleButton = document.getElementById('sidebar-toggle');
+    const toggleIcon = document.getElementById('toggle-icon');
+    const navItems = document.querySelectorAll('.nav-item');
+    const layoutToggleLabel = document.getElementById('layout-toggle-label');
+
+    // Estado inicial (começa aberto)
+    let isSidebarOpen = true;
+
+    function toggleSidebar() {
+        isSidebarOpen = !isSidebarOpen;
+        
+        if (isSidebarOpen) {
+            // ===================================
+            // ESTADO ABERTO (EXPANDIR)
+            // ===================================
+            
+            // 1. Sidebar Width/Padding
+            sidebar.classList.remove('w-20-px', 'p-2');
+            sidebar.classList.add('w-64-px', 'p-4'); 
+
+            // 2. Logo/Título
+            logoText.classList.remove('opacity-0', 'hidden');
+            // Re-adicionar classes de layout (ml-3 para texto)
+            logoText.classList.add('opacity-100', 'ml-3');
+            // Remover centralização do ícone
+            logoIcon.classList.remove('mx-auto');
+
+            // 3. Labels de Navegação
+            navLabels.forEach(label => {
+                label.classList.remove('opacity-0', 'hidden');
+                // Re-adicionar classes de layout (ml-3)
+                label.classList.add('opacity-100', 'ml-3');
+            });
+            
+            // Layout Label
+            if (layoutToggleLabel) {
+                layoutToggleLabel.classList.remove('opacity-0', 'hidden');
+                layoutToggleLabel.classList.add('opacity-100');
+            }
+
+            // 4. Ícones de Navegação
+            navItems.forEach(item => {
+                // Remove centralização e adiciona margem (mr-3)
+                item.querySelector('svg').classList.remove('mx-auto');
+                item.querySelector('svg').classList.add('mr-3');
+            });
+            
+            // 5. Ícone do Toggle
+            toggleIcon.innerHTML = '<path d="m15 18-6-6 6-6"/>'; // Chevron Left
+
+        } else {
+            // ===================================
+            // ESTADO FECHADO (COLAPSAR)
+            // ===================================
+            
+            // 1. Sidebar Width/Padding
+            sidebar.classList.remove('w-64-px', 'p-4');
+            sidebar.classList.add('w-20-px', 'p-2'); 
+
+            // 2. Logo/Título
+            // Remover classes de layout (ml-3)
+            logoText.classList.remove('opacity-100', 'ml-3');
+            // Aplicar 'hidden' para remover do fluxo
+            logoText.classList.add('opacity-0', 'hidden'); 
+            // Centralizar ícone
+            logoIcon.classList.add('mx-auto');
+
+            // 3. Labels de Navegação
+            navLabels.forEach(label => {
+                // Remover classes de layout (ml-3)
+                label.classList.remove('opacity-100', 'ml-3');
+                // Aplicar 'hidden' para remover do fluxo
+                label.classList.add('opacity-0', 'hidden'); 
+            });
+            
+            // Layout Label
+            if (layoutToggleLabel) {
+                 layoutToggleLabel.classList.remove('opacity-100');
+                 layoutToggleLabel.classList.add('opacity-0', 'hidden');
+            }
+
+            // 4. Ícones de Navegação
+            navItems.forEach(item => {
+                // Remove margem e centraliza o ícone (mx-auto)
+                item.querySelector('svg').classList.remove('mr-3');
+                item.querySelector('svg').classList.add('mx-auto');
+            });
+            
+            // 5. Ícone do Toggle
+            toggleIcon.innerHTML = '<path d="m9 18 6-6-6-6"/>'; // Chevron Right
+        }
+    }
+
+    // Adiciona o listener ao botão
+    toggleButton.addEventListener('click', toggleSidebar);
+</script>
 {% endblock %}
