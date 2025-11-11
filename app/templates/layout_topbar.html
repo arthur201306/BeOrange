@@ -3,70 +3,62 @@
 {% block title %}ByteVision CRM - Layout Topbar Otimizado{% endblock %}
 
 {% block head_extra %}
-<!-- Nada extra para o layout Topbar -->
 {% endblock %}
 
 {% block layout_wrapper %}
-<!-- Layout principal, ocupa 100% da tela e usa fundo cinza claro -->
 <div class="min-h-screen flex flex-col font-sans bg-gray-100">
     
-    <!-- Header/Topbar - Ocupa 100% da largura da janela e segue o tema índigo -->
     <header class="bg-white shadow-xl sticky top-0 z-20 flex-shrink-0 border-b-4 border-indigo-600/10">
         <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center h-16">
             
-            <!-- Logo/Título -->
-            <div class="flex items-center space-x-3 flex-shrink-0">
+            <div class="flex items-center space-x-3 flex-shrink-0 w-auto">
                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye text-indigo-600">
                     <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
                 </svg>
-                <div class="text-xl font-extrabold text-gray-900 tracking-tight">ByteVision <span class="text-indigo-600 font-black">CRM</span></div>
+                <div class="text-xl font-extrabold text-gray-900 tracking-tight">ByteVision <span class="text-indigo-600 font-black">CRM</span></div>
             </div>
 
-            <!-- Navegação Principal - Estilo de abas discretas e alinhadas ao tema -->
-            <nav class="hidden md:flex space-x-8 text-sm font-semibold h-full items-center">
-                {% set active_page = request.endpoint %}
+            <nav class="hidden md:flex space-x-8 text-sm font-semibold h-full items-center **flex-auto** **justify-center**">
+                {% set active_page = request.endpoint %}
                 <a href="{{ url_for('main.kanban_board') }}" 
-                   class="h-full flex items-center px-2 transition duration-200 
-                   {% if active_page == 'main.kanban_board' %}
+                    class="h-full flex items-center px-2 transition duration-200 
+                    {% if active_page == 'main.kanban_board' %}
                         text-indigo-600 border-b-2 border-indigo-600 font-bold
                     {% else %}
                         text-gray-600 hover:text-indigo-600 hover:border-b-2 hover:border-indigo-300
                     {% endif %}">
-                   Gestão de Leads
-                </a>
-                <a href="{{ url_for('main.client_list_page') }}" 
-                   class="h-full flex items-center px-2 transition duration-200 
-                   {% if active_page == 'main.client_list_page' %}
+                    Gestão de Leads
+                </a>
+                <a href="{{ url_for('main.client_list_page') }}" 
+                    class="h-full flex items-center px-2 transition duration-200 
+                    {% if active_page == 'main.client_list_page' %}
                         text-indigo-600 border-b-2 border-indigo-600 font-bold
                     {% else %}
                         text-gray-600 hover:text-indigo-600 hover:border-b-2 hover:border-indigo-300
                     {% endif %}">
-                   Lista de Clientes
-                </a>
-            </nav>
+                    Lista de Clientes
+                </a>
+            </nav>
 
-            <!-- Ações e Toggle de Layout -->
-            <div class="flex items-center space-x-4 flex-shrink-0">
+            <div class="flex items-center space-x-4 flex-shrink-0 w-auto">
                 <a href="{{ url_for('main.set_layout', layout_name='sidebar') }}" 
                     class="hidden sm:inline-block text-xs font-medium text-indigo-500 hover:text-indigo-700 transition duration-150 p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100" 
                     title="Mudar Layout">
-                    Mudar p/ Sidebar
-                </a>
-                <button class="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition duration-150 shadow-md shadow-indigo-500/50 text-sm font-semibold flex items-center space-x-1">
+                    Mudar p/ Sidebar
+                </a>
+                <button class="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition duration-150 shadow-md shadow-indigo-500/50 text-sm font-semibold flex items-center space-x-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
                     <span>Novo Lead</span>
                 </button>
-            </div>
+            </div>
         </div>
     </header>
-    
-    <!-- Main Content Area - Ocupa 100% da largura, ideal para o Kanban -->
-    <main class="flex-1 w-full overflow-y-auto">
-        <!-- Container principal com padding, sem restrições de largura. -->
+    
+    <main class="flex-1 w-full overflow-y-auto">
         <div class="p-2 lg:p-4 w-full h-full">
             {% block content %}
             {% endblock %}
         </div>
-    </main>
+    </main>
 </div>
 {% endblock %}
