@@ -1,13 +1,12 @@
-{% extends base_template_name %}
+{% extends "layout_sidebar.html" %}
 
-{% block title %}Pipeline de Vendas - ByteVision CRM{% endblock %}
+{% block title %}Pipeline de Vendas - CRM{% endblock %}
 
 {% block head_extra %}
     <style>
         .kanban-board {
             overflow-x: auto;
             white-space: nowrap;
-            /* Altura ajustada para caber no layout (topbar ou sidebar) */
             max-height: calc(100vh - 160px); 
             padding-bottom: 1rem;
         }
@@ -35,6 +34,23 @@
         .kanban-board::-webkit-scrollbar { height: 8px; }
         .kanban-board::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .kanban-board::-webkit-scrollbar-track { background: #f1f1f1; }
+
+        /* --- CSS PARA O MODAL --- */
+        .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+        }
+        .modal-content {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+        }
+        .modal-hidden {
+            display: none;
+        }
     </style>
 {% endblock %}
 
@@ -51,6 +67,22 @@
     <div id="board-container" class="kanban-board flex p-2">
         </div>
 
+    <div id="confirmation-modal" class="modal-hidden">
+        <div id="modal-backdrop" class="modal-backdrop"></div>
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 id="modal-title" class="text-lg font-bold text-gray-900 mb-4">Confirmar Movimentação</h3>
+            <p id="modal-message" class="text-gray-700 mb-6">Tem certeza que deseja mover este lead?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
 {% endblock %}
 
 
@@ -60,6 +92,17 @@
         const initialLeads = {{ all_leads_json | tojson }};
         const stages = {{ all_stages_json | tojson }};
         const serverError = {{ error | tojson }};
+        const areasColors = {{ areas_colors_json | tojson }};
+        const defaultAreaColor = areasColors['default'] || 'text-gray-800 bg-gray-100';
+
+        // --- LÓGICA DE ESTADO DO MODAL ---
+        const modal = document.getElementById('confirmation-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        let pendingMove = null;
 
         if (serverError && !initialLeads.length) {
             console.error("Erro vindo do Servidor (Python):", serverError);
@@ -75,9 +118,7 @@
         }
 
         /**
-         * Cria um card de lead.
-         * IMPORTANTE: Ajuste os nomes (lead.nome, lead.projeto, lead.valor, lead.responsavel) 
-         * para baterem com os nomes das colunas na sua tabela 'clientes'.
+         * Cria um card de lead com MÚLTIPLAS tags coloridas.
          */
         function createLeadCard(lead) {
             const card = document.createElement('div');
@@ -86,20 +127,34 @@
             card.setAttribute('draggable', 'true');
             card.setAttribute('data-lead-id', lead.id);
             card.setAttribute('data-stage', lead.etapa);
+            card.setAttribute('data-lead-name', lead.nome_empresa || 'Novo Cliente');
 
-            const formattedValue = lead.valor ? parseFloat(lead.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
             let displayDate = 'Sem data';
             if (lead.created_at) {
-                displayDate = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                displayDate = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+
+            // --- LÓGICA DE MÚLTIPLAS TAGS COM CORES ---
+            let areaTagsHTML = ''; 
+            if (lead.areas && lead.areas.length > 0) {
+                areaTagsHTML = lead.areas.map(area => {
+                    const colorClasses = areasColors[area] || defaultAreaColor;
+                    return `<span class="text-xs font-semibold ${colorClasses} px-2 py-0.5 rounded-full mr-1">${area}</span>`;
+                }).join('');
             }
 
             card.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
-                    <h3 class="font-semibold text-gray-800 text-sm">${lead.nome || 'Novo Cliente'}</h3>
-                    <span class="text-xs text-gray-500">${displayDate}</span>
+                    <h3 class="font-semibold text-gray-800 text-sm">${lead.nome_empresa || 'Novo Cliente'}</h3>
                 </div>
-                <p class="text-xs text-gray-600 mb-1 truncate" title="${lead.projeto}">Projeto: ${lead.projeto || 'Não especificado'}</p>
-                <p class="text-sm font-bold text-green-600">${formattedValue}</p>
+                
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex-wrap">
+                        ${areaTagsHTML}
+                    </div>
+                    <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${displayDate}</span>
+                </div>
+
                 <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
                     <p class="text-xs text-gray-400">Owner: ${lead.responsavel || 'N/A'}</p>
                     <div class="flex space-x-1"></div>
@@ -123,26 +178,19 @@
                 return;
             }
             
-            console.log(`Recebidos ${initialLeads.length} leads do servidor.`);
-
-            // Distribui os leads por estágio
             initialLeads.forEach(lead => {
                 const stageId = lead.etapa;
                 if (leadData[stageId]) {
                     leadData[stageId].push(lead);
-                } else if(stageId) { // Só avisa se a etapa não for nula
-                    console.warn(`Lead ${lead.id} ('${lead.nome}') tem uma etapa desconhecida: '${stageId}'`);
+                } else if(stageId) { 
+                    console.warn(`Lead ${lead.id} tem uma etapa desconhecida: '${stageId}'`);
                 }
             });
 
-            // Renderiza os leads
             stages.forEach(stage => {
                 const container = document.getElementById(`cards-${stage.id}`);
                 if (!container) return;
-                
-                // Ordena por data (opcional, pois o Python já ordenou)
                 leadData[stage.id].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                
                 leadData[stage.id].forEach(lead => {
                     container.appendChild(createLeadCard(lead));
                 });
@@ -150,13 +198,14 @@
             });
         }
 
-        // --- LÓGICA DE DRAG AND DROP (COM API PYTHON) ---
+        // --- LÓGICA DE DRAG AND DROP (COM MODAL) ---
         let draggedLeadId = null;
 
         function handleDragStart(e) {
             draggedLeadId = e.target.getAttribute('data-lead-id');
             e.dataTransfer.setData('text/plain', draggedLeadId); 
             e.dataTransfer.setData('text/stage-origin', e.target.parentElement.id.replace('cards-', ''));
+            e.dataTransfer.setData('text/lead-name', e.target.getAttribute('data-lead-name'));
             setTimeout(() => e.target.classList.add('opacity-50'), 0);
         }
 
@@ -170,58 +219,103 @@
         function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
 
         /**
-         * Lida com o "drop" do card, chamando a API Python.
+         * Lida com o "drop", valida e chama o modal.
          */
-        async function handleDrop(e) {
+        function handleDrop(e) {
             e.preventDefault();
             e.currentTarget.classList.remove('drag-over');
+            
             const newStageId = e.currentTarget.getAttribute('data-stage-id');
             const sourceStageId = e.dataTransfer.getData('text/stage-origin');
             const leadId = e.dataTransfer.getData('text/plain');
-            const leadToMove = document.getElementById(`lead-${leadId}`);
+            const leadName = e.dataTransfer.getData('text/lead-name');
             
-            if (newStageId && leadToMove && newStageId !== sourceStageId) {
-                const destinationContainer = document.getElementById(`cards-${newStageId}`);
-                if (destinationContainer) {
-                    // 1. Atualização Otimista (move o card visualmente)
-                    destinationContainer.appendChild(leadToMove);
-                    if (sourceStageId) updateCardCount(sourceStageId);
-                    updateCardCount(newStageId);
-                    leadToMove.setAttribute('data-stage', newStageId);
-
-                    console.log(`Enviando atualização para o servidor: Lead ${leadId} -> ${newStageId}`);
-                    leadToMove.classList.add('opacity-75', 'border-2', 'border-blue-500');
-
-                    // 2. Chama a API Python (Flask)
-                    try {
-                        const response = await fetch("{{ url_for('main.update_lead_stage') }}", {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                lead_id: leadId,
-                                new_stage: newStageId
-                            })
-                        });
-                        
-                        const result = await response.json();
-                        leadToMove.classList.remove('opacity-75', 'border-2', 'border-blue-500');
-
-                        if (!result.success) {
-                            throw new Error(result.error || 'Erro desconhecido no servidor');
-                        }
-                        console.log('Atualização salva no servidor.');
-
-                    } catch (error) {
-                        console.error('Falha ao salvar atualização:', error);
-                        alert('Erro ao salvar. Recarregando a página para garantir a consistência.');
-                        // Desfaz a mudança visual ou recarrega a página
-                        location.reload(); 
-                    }
-                }
+            if (!newStageId || !leadId || newStageId === sourceStageId) {
+                return;
             }
-            draggedLeadId = null;
+
+            const sourceIndex = stages.findIndex(s => s.id === sourceStageId);
+            const targetIndex = stages.findIndex(s => s.id === newStageId);
+            
+            if (sourceIndex === -1 || targetIndex === -1) {
+                console.error("Etapa de origem ou destino desconhecida.");
+                return;
+            }
+
+            // Bloqueia se pular mais de 1 etapa
+            if (Math.abs(targetIndex - sourceIndex) > 1) {
+                alert('Movimentação Inválida!\n\nNão é permitido pular etapas. Mova o lead para uma etapa adjacente.');
+                return;
+            }
+
+            // Armazena dados e chama o modal
+            pendingMove = {
+                leadId: leadId,
+                newStageId: newStageId,
+                sourceStageId: sourceStageId,
+                leadToMove: document.getElementById(`lead-${leadId}`)
+            };
+            
+            const targetStage = stages[targetIndex];
+            modalTitle.textContent = `Mover "${leadName}"`;
+            modalMessage.textContent = `Tem certeza que deseja mover este lead para a etapa "${targetStage.title}"?`;
+            modal.classList.remove('modal-hidden');
         }
 
+        /**
+         * Executa a movimentação após a confirmação.
+         */
+        async function executeMove() {
+            if (!pendingMove) return;
+
+            const { leadId, newStageId, sourceStageId, leadToMove } = pendingMove;
+            const destinationContainer = document.getElementById(`cards-${newStageId}`);
+
+            if (destinationContainer) {
+                // 1. UI Otimista
+                destinationContainer.appendChild(leadToMove);
+                if (sourceStageId) updateCardCount(sourceStageId);
+                updateCardCount(newStageId);
+                leadToMove.setAttribute('data-stage', newStageId);
+                
+                console.log(`Enviando atualização para o servidor: Lead ${leadId} -> ${newStageId}`);
+                leadToMove.classList.add('opacity-75', 'border-2', 'border-blue-500');
+
+                // 2. Chama a API
+                try {
+                    const response = await fetch("{{ url_for('main.update_lead_stage') }}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            lead_id: leadId,
+                            new_stage: newStageId
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    leadToMove.classList.remove('opacity-75', 'border-2', 'border-blue-500');
+
+                    if (!result.success) {
+                        throw new Error(result.error || 'Erro desconhecido no servidor');
+                    }
+                    console.log('Atualização salva no servidor.');
+
+                } catch (error) {
+                    console.error('Falha ao salvar atualização:', error);
+                    alert('Erro ao salvar. Recarregando a página para garantir a consistência.');
+                    location.reload(); 
+                }
+            }
+            
+            pendingMove = null;
+            modal.classList.add('modal-hidden');
+        }
+
+        function cancelMove() {
+            pendingMove = null;
+            modal.classList.add('modal-hidden');
+        }
+        
         // --- MONTAGEM DO QUADRO ---
         function setupBoard() {
             const boardContainer = document.getElementById('board-container');
@@ -230,17 +324,15 @@
                 return; 
             }
             
-            // 'stages' vem da variável injetada pelo Python
             stages.forEach(stage => {
                 const column = document.createElement('div');
                 column.className = 'kanban-column rounded-lg flex flex-col p-4 shadow-lg';
                 column.setAttribute('data-stage-id', stage.id);
-                // Adiciona listeners
                 column.addEventListener('dragover', handleDragOver);
                 column.addEventListener('dragenter', handleDragEnter);
                 column.addEventListener('dragleave', handleDragLeave);
                 column.addEventListener('drop', handleDrop);
-                // Cria cabeçalho
+                
                 const header = document.createElement('div');
                 header.className = 'flex justify-between items-center mb-4 pb-2 border-b-2 border-gray-300';
                 header.innerHTML = `
@@ -250,21 +342,24 @@
                     </div>
                     <span id="count-${stage.id}" class="text-xs font-semibold text-gray-500 px-2 py-1 bg-gray-200 rounded-full">0</span>
                 `;
-                // Cria container dos cards
+                
                 const cardsContainer = document.createElement('div');
                 cardsContainer.id = `cards-${stage.id}`;
                 cardsContainer.className = 'flex-grow overflow-y-auto pt-2 space-y-3';
-                // Monta a coluna
+                
                 column.appendChild(header);
                 column.appendChild(cardsContainer);
                 boardContainer.appendChild(column);
             });
             
-            // Carrega os dados (vindas do 'initialLeads')
             loadLeads();
+
+            modalConfirmBtn.addEventListener('click', executeMove);
+            modalCancelBtn.addEventListener('click', cancelMove);
+            modalBackdrop.addEventListener('click', cancelMove);
         }
 
-        // Inicia o app quando o DOM estiver pronto
+        // Inicia o app
         document.addEventListener('DOMContentLoaded', setupBoard);
     </script>
 {% endblock %}

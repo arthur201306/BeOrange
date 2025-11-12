@@ -51,13 +51,7 @@
                     <span class="nav-label whitespace-nowrap">Lista de Clientes</span>
                 </span>
             </a>
-            <a href="#" class="nav-item px-3 py-2 rounded-lg text-sm font-medium text-gray-300 flex items-center hover:bg-gray-700 hover:text-white transition duration-150 justify-start">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset flex-shrink-0 mr-3"><path d="M10 19l-5 5H4c-1.104 0-2-.896-2-2V4c0-1.104.896-2 2-2h16c1.104 0 2 .896 2 2v10c0 1.104-.896 2-2 2h-1v-4H10z"/></svg>
-                <span class="nav-text-wrapper text-transition opacity-100 flex-1 overflow-hidden">
-                    <span class="nav-label whitespace-nowrap">Atendimentos</span>
-                </span>
-            </a>
-            <a href="#" class="nav-item px-3 py-2 rounded-lg text-sm font-medium text-gray-300 flex items-center hover:bg-gray-700 hover:text-white transition duration-150 justify-start">
+            <a href="{{ url_for('main.negocios_page') }}" class="nav-item px-3 py-2 rounded-lg text-sm font-medium text-gray-300 flex items-center hover:bg-gray-700 hover:text-white transition duration-150 justify-start">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up flex-shrink-0 mr-3"><polyline points="22 7 18 11 12 5 6 17 2 13"/></svg>
                 <span class="nav-text-wrapper text-transition opacity-100 flex-1 overflow-hidden">
                     <span class="nav-label whitespace-nowrap">Central de Negócios</span>
@@ -83,10 +77,11 @@
         
         <header class="bg-white shadow-sm p-4 flex justify-between items-center border-b border-gray-200">
             <h1 class="text-xl font-semibold text-gray-800">{% block page_title %}Gestão de Leads{% endblock %}</h1>
+            
             {% block header_actions %}
-            <button class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md text-sm">
+            <a href="{{ url_for('main.create_lead_page') }}" class="bg-indigo-500 text-white px-3 py-2 rounded-lg hover:bg-indigo-600 transition duration-150 shadow-md text-sm inline-flex items-center">
                 <span class="font-medium">+ Novo Lead</span>
-            </button>
+            </a>
             {% endblock %}
         </header>
 
@@ -101,22 +96,16 @@
     </div>
 </div>
 
----
-
-## ⚙️ Código JavaScript (Lógica e Centralização)
-
-```javascript
 <script>
-    console.log("👉 SCRIPT DA SIDEBAR V4.1 (FINAL) EXECUTANDO!"); 
+    console.log("👉 SCRIPT DA SIDEBAR V4.2 (COM LOCALSTORAGE) EXECUTANDO!"); 
 
+    // --- 1. SELETORES DOM ---
     const sidebar = document.getElementById('sidebar');
     const logoText = document.getElementById('logo-text');
     const logoIcon = document.getElementById('logo-icon'); 
     const logoContainer = document.getElementById('logo-container'); 
-    
     const navItems = document.querySelectorAll('.nav-item');
     const navWrappers = document.querySelectorAll('.nav-text-wrapper');
-
     const toggleButton = document.getElementById('sidebar-toggle');
     const toggleIcon = document.getElementById('toggle-icon');
     const footerContainer = document.getElementById('footer-container');
@@ -126,122 +115,105 @@
         console.error("❌ ERRO CRÍTICO: Elemento 'sidebar' ou 'sidebar-toggle' não encontrado.");
     }
     
-    let isSidebarOpen = true;
-
-    function toggleSidebar() {
-        isSidebarOpen = !isSidebarOpen;
-        
-        // ===================================
-        // ESTADO ABERTO (EXPANDIR)
-        // ===================================
-        if (isSidebarOpen) {
-            
-            // 1. Largura (INLINE STYLE)
-            sidebar.style.width = '16rem'; 
-            sidebar.style.padding = '1rem'; 
-            sidebar.style.minWidth = '16rem';
-            sidebar.style.maxWidth = '16rem'; 
-            
-            // 2. Logo
-            if (logoText && logoIcon && logoContainer) {
-                logoContainer.classList.remove('justify-center');
-                // CORREÇÃO DA LOGO: Remove as classes de esconder e adiciona flex-1
-                logoText.classList.remove('opacity-0', 'w-0', 'overflow-hidden');
-                logoText.classList.add('opacity-100', 'ml-3', 'flex-1');
-                
-                logoIcon.classList.remove('mx-auto'); // Remove centralização do ícone do olho
+    // --- 2. FUNÇÕES DE ABRIR/FECHAR ---
+    function expandSidebar() {
+        sidebar.style.width = '16rem'; 
+        sidebar.style.padding = '1rem'; 
+        sidebar.style.minWidth = '16rem';
+        sidebar.style.maxWidth = '16rem'; 
+        if (logoText && logoIcon && logoContainer) {
+            logoContainer.classList.remove('justify-center');
+            logoText.classList.remove('opacity-0', 'w-0', 'overflow-hidden');
+            logoText.classList.add('opacity-100', 'ml-3', 'flex-1');
+            logoIcon.classList.remove('mx-auto');
+        }
+        navWrappers.forEach(wrapper => {
+            wrapper.classList.remove('w-0', 'opacity-0', 'pointer-events-none');
+            wrapper.classList.add('flex-1', 'opacity-100');
+        });
+        navItems.forEach(item => {
+            const svgIcon = item.querySelector('svg');
+            item.classList.remove('justify-center');
+            item.classList.add('justify-start');
+            item.classList.remove('px-0');
+            item.classList.add('px-3');
+            if (svgIcon) {
+                svgIcon.classList.remove('mx-auto');
+                svgIcon.classList.add('mr-3'); 
             }
-
-            // 3. Labels (Usando o Wrapper)
-            navWrappers.forEach(wrapper => {
-                // Remove classes de colapso
-                wrapper.classList.remove('w-0', 'opacity-0', 'pointer-events-none');
-                wrapper.classList.add('flex-1', 'opacity-100');
-            });
-            
-            navItems.forEach(item => {
-                const svgIcon = item.querySelector('svg');
-                
-                item.classList.remove('justify-center');
-                item.classList.add('justify-start');
-                
-                item.classList.remove('px-0');
-                item.classList.add('px-3');
-
-                if (svgIcon) {
-                    svgIcon.classList.remove('mx-auto');
-                    svgIcon.classList.add('mr-3'); 
-                }
-            });
-            
-            // 4. Footer
-            if (footerContainer && layoutLink) {
-                footerContainer.classList.remove('justify-center');
-                footerContainer.classList.add('justify-between');
-                layoutLink.classList.remove('hidden');
-            }
-
-            // 5. Ícone do Toggle
+        });
+        if (footerContainer && layoutLink) {
+            footerContainer.classList.remove('justify-center');
+            footerContainer.classList.add('justify-between');
+            layoutLink.classList.remove('hidden');
+        }
+        if (toggleIcon) {
             toggleIcon.innerHTML = '<path d="m15 18-6-6 6-6"/>'; // Chevron Left
+        }
+    }
 
-        // ===================================
-        // ESTADO FECHADO (COLAPSAR)
-        // ===================================
-        } else {
-            
-            // 1. Largura (INLINE STYLE)
-            sidebar.style.width = '5rem';
-            sidebar.style.padding = '0'; // ZERA o padding lateral da sidebar
-            sidebar.style.minWidth = '5rem';
-            sidebar.style.maxWidth = '5rem';
-
-            // 2. Logo
-            if (logoText && logoIcon && logoContainer) {
-                logoContainer.classList.add('justify-center');
-                
-                // CORREÇÃO DA LOGO: Esconde o texto, remove flex-1
-                logoText.classList.remove('opacity-100', 'ml-3', 'flex-1');
-                logoText.classList.add('opacity-0', 'w-0', 'overflow-hidden'); 
-                
-                // Centraliza o ícone do olho
-                logoIcon.classList.add('mx-auto');
+    function collapseSidebar() {
+        sidebar.style.width = '5rem';
+        sidebar.style.padding = '0';
+        sidebar.style.minWidth = '5rem';
+        sidebar.style.maxWidth = '5rem';
+        if (logoText && logoIcon && logoContainer) {
+            logoContainer.classList.add('justify-center');
+            logoText.classList.remove('opacity-100', 'ml-3', 'flex-1');
+            logoText.classList.add('opacity-0', 'w-0', 'overflow-hidden'); 
+            logoIcon.classList.add('mx-auto');
+        }
+        navWrappers.forEach(wrapper => {
+            wrapper.classList.remove('flex-1', 'opacity-100');
+            wrapper.classList.add('w-0', 'opacity-0', 'pointer-events-none');
+        });
+        navItems.forEach(item => {
+            const svgIcon = item.querySelector('svg');
+            item.classList.remove('justify-start');
+            item.classList.add('justify-center');
+            item.classList.remove('px-3');
+            item.classList.add('px-0');
+            if (svgIcon) {
+                svgIcon.classList.remove('mr-3'); 
+                svgIcon.classList.remove('mx-auto');
             }
-
-            // 3. Labels (Usando o Wrapper)
-            navWrappers.forEach(wrapper => {
-                wrapper.classList.remove('flex-1', 'opacity-100');
-                wrapper.classList.add('w-0', 'opacity-0', 'pointer-events-none');
-            });
-            
-            navItems.forEach(item => {
-                const svgIcon = item.querySelector('svg');
-                
-                item.classList.remove('justify-start');
-                item.classList.add('justify-center');
-                
-                item.classList.remove('px-3');
-                item.classList.add('px-0'); // Remove padding lateral
-
-                if (svgIcon) {
-                    svgIcon.classList.remove('mr-3'); 
-                    svgIcon.classList.remove('mx-auto');
-                }
-            });
-
-            // 4. Footer
-            if (footerContainer && layoutLink) {
-                footerContainer.classList.remove('justify-between');
-                footerContainer.classList.add('justify-center'); // Centraliza o que sobrou (o botão)
-                layoutLink.classList.add('hidden'); // Esconde o elemento 'Mudar p/ Header'
-            }
-            
-            // 5. Ícone do Toggle
+        });
+        if (footerContainer && layoutLink) {
+            footerContainer.classList.remove('justify-between');
+            footerContainer.classList.add('justify-center');
+            layoutLink.classList.add('hidden');
+        }
+        if (toggleIcon) {
             toggleIcon.innerHTML = '<path d="m9 18 6-6-6-6"/>'; // Chevron Right
         }
     }
 
+    // --- 3. CONTROLE DE ESTADO (localStorage) ---
+    const savedState = localStorage.getItem('sidebarState') || 'open';
+    let isSidebarOpen = (savedState === 'open');
+
+    function toggleSidebar() {
+        isSidebarOpen = !isSidebarOpen;
+        sidebar.classList.add('sidebar-transition');
+        if (isSidebarOpen) {
+            expandSidebar();
+        } else {
+            collapseSidebar();
+        }
+        localStorage.setItem('sidebarState', isSidebarOpen ? 'open' : 'closed');
+    }
+
     if (toggleButton) {
         toggleButton.addEventListener('click', toggleSidebar);
+    }
+    
+    // --- 4. INICIALIZAÇÃO NO CARREGAMENTO DA PÁGINA ---
+    if (!isSidebarOpen) {
+        sidebar.classList.remove('sidebar-transition');
+        collapseSidebar();
+        setTimeout(() => {
+            sidebar.classList.add('sidebar-transition');
+        }, 50); 
     }
 </script>
 {% endblock %}
