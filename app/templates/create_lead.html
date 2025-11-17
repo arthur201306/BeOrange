@@ -16,7 +16,7 @@
         
         <form id="create-lead-form" 
               method="POST" 
-              action="{{ url_for('main.create_lead_page') }}">
+              action="{{ url_for('main.create_lead_action') }}">
 
             <div class="p-6 md:p-8">
                 <h2 class="text-xl font-semibold text-gray-800 mb-6">Informações do Cliente</h2>
@@ -102,8 +102,10 @@
         form.addEventListener('submit', async (event) => {
             // 1. Impede o envio padrão (que recarrega a página)
             event.preventDefault();
+            console.log("Formulário enviado");
 
             // 2. Mostra o feedback de "carregando"
+            console.log("Mostrar feedback de carregando...");
             feedback.textContent = '';
             feedback.classList.remove('text-red-600', 'text-green-600');
             submitButton.disabled = true;
@@ -113,9 +115,11 @@
             // 3. Coleta os dados do formulário
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
+            console.log("Dados coletados do formulário:", data);
 
             try {
                 // 4. Envia os dados para a API que criamos
+                console.log("Enviando dados para a API...");
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -125,15 +129,21 @@
                     body: JSON.stringify(data)
                 });
 
+                console.log("Resposta recebida da API:", response);
+
                 const result = await response.json();
+                console.log("Resultado da API:", result);
 
                 if (response.ok) { // Status 200-299
                     // 5a. SUCESSO!
+                    console.log("Lead criado com sucesso!");
+
                     form.classList.add('hidden'); // Esconde o formulário
                     successMessage.classList.remove('hidden'); // Mostra a caixa de sucesso
-                    
+
                     // Opcional: Redireciona após um tempo
                     setTimeout(() => {
+                        console.log("Redirecionando para o Kanban...");
                         window.location.href = "{{ url_for('main.kanban_board') }}";
                     }, 3000); // 3 segundos
 
@@ -144,9 +154,10 @@
 
             } catch (error) {
                 // 5c. Erro de rede ou o 'throw' acima
+                console.error("Erro ao enviar o formulário:", error);
                 feedback.textContent = `Erro: ${error.message}`;
                 feedback.classList.add('text-red-600');
-                
+
                 // Reabilita o botão para nova tentativa
                 submitButton.disabled = false;
                 submitText.classList.remove('hidden');

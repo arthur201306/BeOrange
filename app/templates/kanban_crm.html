@@ -7,14 +7,13 @@
         .kanban-board {
             overflow-x: auto;
             white-space: nowrap;
-            max-height: calc(100vh - 160px); 
+            /* Altura fixa para forçar colunas iguais */
+            height: calc(100vh - 200px); 
             padding-bottom: 1rem;
         }
         .kanban-column {
-            display: inline-block;
-            vertical-align: top;
+            /* Removido CSS desnecessário (inline-block, min-height) */
             width: 300px;
-            min-height: calc(100vh - 220px); 
             background-color: #eef2f6;
             margin-right: 1rem;
             white-space: normal;
@@ -35,7 +34,7 @@
         .kanban-board::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .kanban-board::-webkit-scrollbar-track { background: #f1f1f1; }
 
-        /* --- CSS PARA O MODAL --- */
+        /* --- CSS PARA O MODAL (Inalterado) --- */
         .modal-backdrop {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -57,6 +56,9 @@
 
 {% block content %}
     <h1 class="text-2xl font-semibold text-gray-800 mb-4">Pipeline de Vendas</h1>
+        
+    <div id="areas-legend" class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 p-3 bg-white rounded-lg shadow-sm border border-gray-200">
+        </div>
         
     {% if error %}
         <div class="text-center text-red-600 font-semibold p-4 bg-red-100 border border-red-300 rounded-lg mb-4">
@@ -116,9 +118,38 @@
                 countDisplay.textContent = `${container.children.length} clientes/projetos`;
             }
         }
+        
+        /**
+         * [FUNÇÃO CORRIGIDA]
+         * Cria a legenda de áreas. As bolinhas agora terão cores fortes (sem borda).
+         */
+        function setupAreasLegend() {
+            const legendContainer = document.getElementById('areas-legend');
+            if (!legendContainer) return;
+
+            let legendItemsHTML = '';
+            for (const area in areasColors) {
+                if (area === 'default') continue; 
+                
+                const colorClasses = areasColors[area];
+                
+                // [CORREÇÃO] Removida a borda que apagava a cor
+                legendItemsHTML += `
+                    <div class="flex items-center">
+                        <span class="inline-block w-3 h-3 ${colorClasses} rounded-full mr-1.5"></span>
+                        <span class="text-xs font-medium text-gray-600">${area}</span>
+                    </div>
+                `;
+            }
+            legendContainer.innerHTML = `<strong class="text-xs text-gray-500 uppercase mr-2">Áreas:</strong>` + legendItemsHTML;
+        }
+
 
         /**
-         * Cria um card de lead com MÚLTIPLAS tags coloridas.
+         * [FUNÇÃO CORRIGIDA]
+         * Cria um card de lead. 
+         * 1. Lida com 'areas' sendo string ou array (evita erro .map).
+         * 2. Mostra "pontos" coloridos sem borda (para cor mais forte).
          */
         function createLeadCard(lead) {
             const card = document.createElement('div');
@@ -134,14 +165,26 @@
                 displayDate = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
             }
 
-            // --- LÓGICA DE MÚLTIPLAS TAGS COM CORES ---
+            // --- INÍCIO DA CORREÇÃO (Para erro .map() e cores) ---
             let areaTagsHTML = ''; 
-            if (lead.areas && lead.areas.length > 0) {
-                areaTagsHTML = lead.areas.map(area => {
+            let areasArray = []; 
+
+            if (lead.areas) {
+                if (Array.isArray(lead.areas)) {
+                    areasArray = lead.areas;
+                } else if (typeof lead.areas === 'string') {
+                    areasArray = [lead.areas];
+                }
+            }
+            
+            if (areasArray.length > 0) {
+                areaTagsHTML = areasArray.map(area => {
                     const colorClasses = areasColors[area] || defaultAreaColor;
-                    return `<span class="text-xs font-semibold ${colorClasses} px-2 py-0.5 rounded-full mr-1">${area}</span>`;
+                    // [CORREÇÃO] Removida a borda que apagava a cor
+                    return `<span class="inline-block w-3 h-3 ${colorClasses} rounded-full mr-1" title="${area}"></span>`;
                 }).join('');
             }
+            // --- FIM DA CORREÇÃO ---
 
             card.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
@@ -166,9 +209,18 @@
         }
 
         /**
-         * Carrega os leads (vindas do Python) no quadro.
+         * [FUNÇÃO CORRIGIDA]
+         * Carrega os leads, traduzindo 'title' (do dado) para 'id' (da coluna).
          */
         function loadLeads() {
+            
+            // 1. Crie um mapa de Título -> ID
+            const stageTitleToIdMap = {};
+            stages.forEach(stage => {
+                stageTitleToIdMap[stage.title] = stage.id;
+            });
+
+            // 2. Inicialize os "baldes" de leads USANDO O ID
             const leadData = {}; 
             stages.forEach(stage => leadData[stage.id] = []);
 
@@ -178,27 +230,34 @@
                 return;
             }
             
+            // 3. Ao processar os leads, use o mapa para encontrar o ID correto
             initialLeads.forEach(lead => {
-                const stageId = lead.etapa;
+                const leadStageTitle = lead.etapa; 
+                const stageId = stageTitleToIdMap[leadStageTitle]; 
+
                 if (leadData[stageId]) {
                     leadData[stageId].push(lead);
-                } else if(stageId) { 
-                    console.warn(`Lead ${lead.id} tem uma etapa desconhecida: '${stageId}'`);
+                } else if(leadStageTitle) { 
+                    console.warn(`Lead ${lead.id} tem uma etapa desconhecida: '${leadStageTitle}' (Não foi encontrada no mapa)`);
                 }
             });
 
+            // 4. Renderiza os cards
             stages.forEach(stage => {
-                const container = document.getElementById(`cards-${stage.id}`);
+                const container = document.getElementById(`cards-${stage.id}`); 
                 if (!container) return;
+                
                 leadData[stage.id].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                
                 leadData[stage.id].forEach(lead => {
                     container.appendChild(createLeadCard(lead));
                 });
+                
                 updateCardCount(stage.id);
             });
         }
 
-        // --- LÓGICA DE DRAG AND DROP (COM MODAL) ---
+        // --- LÓGICA DE DRAG AND DROP (Inalterada) ---
         let draggedLeadId = null;
 
         function handleDragStart(e) {
@@ -218,9 +277,6 @@
         function handleDragEnter(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
         function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
 
-        /**
-         * Lida com o "drop", valida e chama o modal.
-         */
         function handleDrop(e) {
             e.preventDefault();
             e.currentTarget.classList.remove('drag-over');
@@ -242,13 +298,11 @@
                 return;
             }
 
-            // Bloqueia se pular mais de 1 etapa
             if (Math.abs(targetIndex - sourceIndex) > 1) {
                 alert('Movimentação Inválida!\n\nNão é permitido pular etapas. Mova o lead para uma etapa adjacente.');
                 return;
             }
 
-            // Armazena dados e chama o modal
             pendingMove = {
                 leadId: leadId,
                 newStageId: newStageId,
@@ -262,9 +316,6 @@
             modal.classList.remove('modal-hidden');
         }
 
-        /**
-         * Executa a movimentação após a confirmação.
-         */
         async function executeMove() {
             if (!pendingMove) return;
 
@@ -323,18 +374,23 @@
                 console.error("Elemento 'board-container' não encontrado.");
                 return; 
             }
+
+            // Chama a função que constrói a legenda
+            setupAreasLegend();
             
             stages.forEach(stage => {
                 const column = document.createElement('div');
+                // Adiciona 'flex flex-col' para que a coluna use flexbox internamente
                 column.className = 'kanban-column rounded-lg flex flex-col p-4 shadow-lg';
-                column.setAttribute('data-stage-id', stage.id);
+                column.setAttribute('data-stage-id', stage.id); 
                 column.addEventListener('dragover', handleDragOver);
                 column.addEventListener('dragenter', handleDragEnter);
                 column.addEventListener('dragleave', handleDragLeave);
                 column.addEventListener('drop', handleDrop);
                 
                 const header = document.createElement('div');
-                header.className = 'flex justify-between items-center mb-4 pb-2 border-b-2 border-gray-300';
+                // 'flex-shrink-0' previne que o header encolha
+                header.className = 'flex justify-between items-center mb-4 pb-2 border-b-2 border-gray-300 flex-shrink-0';
                 header.innerHTML = `
                     <div class="flex items-center">
                         <span class="w-3 h-3 rounded-full ${stage.color} mr-2"></span>
@@ -344,7 +400,9 @@
                 `;
                 
                 const cardsContainer = document.createElement('div');
-                cardsContainer.id = `cards-${stage.id}`;
+                cardsContainer.id = `cards-${stage.id}`; 
+                // 'flex-grow' faz o container de cards ocupar todo o espaço restante
+                // 'overflow-y-auto' adiciona scroll SÓ a este container
                 cardsContainer.className = 'flex-grow overflow-y-auto pt-2 space-y-3';
                 
                 column.appendChild(header);

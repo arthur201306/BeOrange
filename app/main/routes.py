@@ -26,31 +26,33 @@ if not url or not key:
 # --- Constantes de Configuração ---
 
 # Colunas para o Kanban (incluindo as que o card precisa)
-KANBAN_COLUMNS: str = "id, nome_empresa, nome_contato, etapa, responsavel, created_at, areas"
+#KANBAN_COLUMNS: str = "id, nome_empresa, nome_contato, etapa, responsavel, created_at, areas"
+KANBAN_COLUMNS = "id, nome_empresa, nome_contato, etapa, responsavel, created_at, areas"
 
 # Colunas para a lista de clientes
-CLIENT_LIST_COLUMNS: str = "id, nome_empresa, nome_contato, email, telefone, responsavel, etapa, created_at, areas"
+CLIENT_LIST_COLUMNS = "id, nome_empresa, nome_contato, email, telefone, responsavel, etapa, created_at, areas"
 
 # Configuração das Etapas do Funil
 STAGES_CONFIG: List[Dict[str, str]] = [
     {'id': 'Aguardando retorno', 'title': 'Aguardando retorno', 'color': 'bg-blue-500'},
     {'id': 'Em atendimento', 'title': 'Em atendimento', 'color': 'bg-yellow-500'},
-    {'id': 'Reuniao', 'title': 'Reunião', 'color': 'bg-purple-500'},
+    {'id': 'Reunião', 'title': 'Reunião', 'color': 'bg-purple-500'},
     {'id': 'Em proposta', 'title': 'Em proposta', 'color': 'bg-red-500'},
     {'id': 'Finalizado', 'title': 'Finalizado', 'color': 'bg-green-500'}
 ]
 
 # Mapa de Cores das Áreas (Tags)
 AREAS_COLOR_MAP: Dict[str, str] = {
-    'TI': 'text-blue-800 bg-blue-100',
-    'Marketing': 'text-green-800 bg-green-100',
-    'Vendas': 'text-yellow-800 bg-yellow-100',
-    'Financeiro': 'text-indigo-800 bg-indigo-100',
-    'RH': 'text-pink-800 bg-pink-100',
+    # Paleta de cores alterada para NÃO conflitar com as Etapas
+    'TI': 'text-white bg-indigo-500',      # Era Azul (conflito com Etapa)
+    'Marketing': 'text-white bg-teal-500',        # Era Verde (conflito com Etapa)
+    'Vendas': 'text-white bg-orange-500',       # Era Amarelo (conflito com Etapa)
+    'Financeiro': 'text-white bg-cyan-500',     # (Nova cor)
+    'RH': 'text-white bg-pink-500',         # (Esta cor já era única)
+    
     # Uma cor "padrão" para áreas não mapeadas
-    'default': 'text-gray-800 bg-gray-100'
+    'default': 'text-white bg-gray-500',
 }
-
 # --- Helpers de Blueprint ---
 
 def get_supabase() -> Client:
@@ -95,6 +97,7 @@ def kanban_board():
     try:
         response = supabase.table('clientes').select(KANBAN_COLUMNS).order('created_at', desc=True).execute()
         leads = response.data
+        print(response, leads)
     except Exception as e:
         error_msg = f"Erro ao buscar leads: {e}"
 
@@ -190,13 +193,7 @@ def negocios_page():
         stages_config=STAGES_CONFIG # Passa a config de etapas para o template
     )
 
-@main_bp.route('/login', methods=['GET', 'POST'])
-def login():
-    """ Rota de login (sem layout principal) """
-    if request.method == 'GET':
-        return render_template("login.html", base_template_name='base.html') 
-    # (Lógica de POST login)
-    
+
 # --- Rotas de Controle ---
 
 @main_bp.route('/set-layout/<layout_name>')
@@ -207,7 +204,6 @@ def set_layout(layout_name):
     return redirect(request.referrer or url_for('main.home'))
 
 # --- Rotas de API ---
-
 @main_bp.route('/api/leads/create', methods=['POST'])
 def create_lead_action():
     supabase = get_supabase()
