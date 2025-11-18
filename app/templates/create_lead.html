@@ -53,6 +53,41 @@
                                placeholder="Ex: maria.silva@acme.com">
                     </div>
 
+                    <div>
+                        <label for="responsavel" class="block text-sm font-medium text-gray-700">Responsável (Owner)</label>
+                        <input type="text" name="responsavel" id="responsavel" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                               placeholder="Ex: João Silva">
+                    </div>
+
+                    <div>
+                        <label for="etapa" class="block text-sm font-medium text-gray-700">Etapa Inicial</label>
+                        <select name="etapa" id="etapa" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            {% for stage in all_stages %}
+                                <option value="{{ stage.id }}" {% if stage.id == 'Aguardando retorno' %}selected{% endif %}>
+                                    {{ stage.title }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label for="areas" class="block text-sm font-medium text-gray-700">Áreas de Interesse</label>
+                        <select name="areas" id="areas" multiple 
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-32">
+                            <option value="" disabled>Segure Ctrl (ou Cmd) para selecionar ou desmarcar múltiplas áreas</option>
+                            
+                            {% if all_areas %}
+                                {% for area in all_areas %}
+                                    <option value="{{ area.nome }}">{{ area.nome }}</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>Nenhuma área cadastrada</option>
+                            {% endif %}
+                            
+                        </select>
+                    </div>
+
                     </div>
             </div>
 
@@ -102,10 +137,8 @@
         form.addEventListener('submit', async (event) => {
             // 1. Impede o envio padrão (que recarrega a página)
             event.preventDefault();
-            console.log("Formulário enviado");
 
             // 2. Mostra o feedback de "carregando"
-            console.log("Mostrar feedback de carregando...");
             feedback.textContent = '';
             feedback.classList.remove('text-red-600', 'text-green-600');
             submitButton.disabled = true;
@@ -115,11 +148,19 @@
             // 3. Coleta os dados do formulário
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
-            console.log("Dados coletados do formulário:", data);
+
+            // --- [# CORREÇÃO JAVASCRIPT #] ---
+            // 'Object.fromEntries' não funciona com <select multiple>
+            // Precisamos pegar os valores das áreas manualmente.
+            const areasSelect = document.getElementById('areas');
+            // A API 'create_lead_action' espera os NOMES das áreas
+            data.areas = [...areasSelect.selectedOptions].map(option => option.value);
+            // --- Fim da Correção ---
+
+            console.log("Dados (com áreas) enviados para a API:", data);
 
             try {
                 // 4. Envia os dados para a API que criamos
-                console.log("Enviando dados para a API...");
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -129,10 +170,7 @@
                     body: JSON.stringify(data)
                 });
 
-                console.log("Resposta recebida da API:", response);
-
                 const result = await response.json();
-                console.log("Resultado da API:", result);
 
                 if (response.ok) { // Status 200-299
                     // 5a. SUCESSO!
@@ -143,7 +181,6 @@
 
                     // Opcional: Redireciona após um tempo
                     setTimeout(() => {
-                        console.log("Redirecionando para o Kanban...");
                         window.location.href = "{{ url_for('main.kanban_board') }}";
                     }, 3000); // 3 segundos
 

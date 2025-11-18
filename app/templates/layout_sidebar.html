@@ -51,7 +51,17 @@
                     <span class="nav-label whitespace-nowrap">Lista de Clientes</span>
                 </span>
             </a>
-            <a href="{{ url_for('main.negocios_page') }}" class="nav-item px-3 py-2 rounded-lg text-sm font-medium text-gray-300 flex items-center hover:bg-gray-700 hover:text-white transition duration-150 justify-start">
+            
+            <a href="{{ url_for('main.list_areas_page') }}" class="nav-item px-3 py-2 rounded-lg text-sm font-medium flex items-center transition duration-150 justify-start {% if active_page == 'main.list_areas_page' %}bg-indigo-600 text-white hover:bg-indigo-700{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tag flex-shrink-0 mr-3">
+                    <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/>
+                </svg>
+                <span class="nav-text-wrapper text-transition opacity-100 flex-1 overflow-hidden">
+                    <span class="nav-label whitespace-nowrap">Gerenciar Áreas</span>
+                </span>
+            </a>
+
+            <a href="{{ url_for('main.negocios_page') }}" class="nav-item px-3 py-2 rounded-lg text-sm font-medium text-gray-300 flex items-center hover:bg-gray-700 hover:text-white transition duration-150 justify-start {% if active_page == 'main.negocios_page' %}bg-indigo-600 text-white hover:bg-indigo-700{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trending-up flex-shrink-0 mr-3"><polyline points="22 7 18 11 12 5 6 17 2 13"/></svg>
                 <span class="nav-text-wrapper text-transition opacity-100 flex-1 overflow-hidden">
                     <span class="nav-label whitespace-nowrap">Central de Negócios</span>

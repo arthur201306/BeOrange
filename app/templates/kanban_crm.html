@@ -7,12 +7,10 @@
         .kanban-board {
             overflow-x: auto;
             white-space: nowrap;
-            /* Altura fixa para forçar colunas iguais */
             height: calc(100vh - 200px); 
             padding-bottom: 1rem;
         }
         .kanban-column {
-            /* Removido CSS desnecessário (inline-block, min-height) */
             width: 300px;
             background-color: #eef2f6;
             margin-right: 1rem;
@@ -50,15 +48,17 @@
         .modal-hidden {
             display: none;
         }
+
+        /* [# ATUALIZADO #] Garante que o menu de contexto fique acima de tudo */
+        #context-menu {
+            z-index: 100;
+        }
     </style>
 {% endblock %}
 
 
 {% block content %}
     <h1 class="text-2xl font-semibold text-gray-800 mb-4">Pipeline de Vendas</h1>
-        
-    <div id="areas-legend" class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 p-3 bg-white rounded-lg shadow-sm border border-gray-200">
-        </div>
         
     {% if error %}
         <div class="text-center text-red-600 font-semibold p-4 bg-red-100 border border-red-300 rounded-lg mb-4">
@@ -85,6 +85,15 @@
         </div>
     </div>
 
+    <div id="context-menu" class="modal-hidden absolute bg-white rounded-md shadow-lg py-1 w-48 border border-gray-200">
+        <a href="#" id="context-menu-edit" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+            Editar Lead
+        </a>
+        <a href="#" id="context-menu-history" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+            Ver Histórico
+        </a>
+    </div>
+
 {% endblock %}
 
 
@@ -106,6 +115,11 @@
         const modalBackdrop = document.getElementById('modal-backdrop');
         let pendingMove = null;
 
+        // --- [# NOVO #] VARIÁVEIS DO MENU DE CONTEXTO ---
+        const contextMenu = document.getElementById('context-menu');
+        const contextMenuEdit = document.getElementById('context-menu-edit');
+        const contextMenuHistory = document.getElementById('context-menu-history');
+
         if (serverError && !initialLeads.length) {
             console.error("Erro vindo do Servidor (Python):", serverError);
         }
@@ -119,37 +133,11 @@
             }
         }
         
-        /**
-         * [FUNÇÃO CORRIGIDA]
-         * Cria a legenda de áreas. As bolinhas agora terão cores fortes (sem borda).
-         */
-        function setupAreasLegend() {
-            const legendContainer = document.getElementById('areas-legend');
-            if (!legendContainer) return;
-
-            let legendItemsHTML = '';
-            for (const area in areasColors) {
-                if (area === 'default') continue; 
-                
-                const colorClasses = areasColors[area];
-                
-                // [CORREÇÃO] Removida a borda que apagava a cor
-                legendItemsHTML += `
-                    <div class="flex items-center">
-                        <span class="inline-block w-3 h-3 ${colorClasses} rounded-full mr-1.5"></span>
-                        <span class="text-xs font-medium text-gray-600">${area}</span>
-                    </div>
-                `;
-            }
-            legendContainer.innerHTML = `<strong class="text-xs text-gray-500 uppercase mr-2">Áreas:</strong>` + legendItemsHTML;
-        }
-
+        // [REMOVIDO] A função setupAreasLegend() foi removida.
 
         /**
-         * [FUNÇÃO CORRIGIDA]
-         * Cria um card de lead. 
-         * 1. Lida com 'areas' sendo string ou array (evita erro .map).
-         * 2. Mostra "pontos" coloridos sem borda (para cor mais forte).
+         * [FUNÇÃO ATUALIZADA]
+         * Cria um card de lead com Badges e listener de clique direito.
          */
         function createLeadCard(lead) {
             const card = document.createElement('div');
@@ -165,62 +153,56 @@
                 displayDate = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
             }
 
-            // --- INÍCIO DA CORREÇÃO (Para erro .map() e cores) ---
+            // --- ATUALIZADO: Lógica das Badges ---
             let areaTagsHTML = ''; 
             let areasArray = []; 
-
-            if (lead.areas) {
-                if (Array.isArray(lead.areas)) {
-                    areasArray = lead.areas;
-                } else if (typeof lead.areas === 'string') {
-                    areasArray = [lead.areas];
-                }
+            if (lead.areas && Array.isArray(lead.areas)) {
+                areasArray = lead.areas;
             }
             
             if (areasArray.length > 0) {
                 areaTagsHTML = areasArray.map(area => {
                     const colorClasses = areasColors[area] || defaultAreaColor;
-                    // [CORREÇÃO] Removida a borda que apagava a cor
-                    return `<span class="inline-block w-3 h-3 ${colorClasses} rounded-full mr-1" title="${area}"></span>`;
+                    return `<span class="inline-block px-2 py-0.5 ${colorClasses} rounded-full text-xs font-medium" title="${area}">
+                                ${area}
+                            </span>`;
                 }).join('');
             }
-            // --- FIM DA CORREÇÃO ---
 
+            // --- ATUALIZADO: Layout do Card ---
             card.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
                     <h3 class="font-semibold text-gray-800 text-sm">${lead.nome_empresa || 'Novo Cliente'}</h3>
                 </div>
-                
-                <div class="flex justify-between items-center mb-3">
-                    <div class="flex-wrap">
-                        ${areaTagsHTML}
-                    </div>
-                    <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${displayDate}</span>
+                <div class="flex flex-wrap gap-1 mb-3">
+                    ${areaTagsHTML}
                 </div>
-
                 <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
                     <p class="text-xs text-gray-400">Owner: ${lead.responsavel || 'N/A'}</p>
-                    <div class="flex space-x-1"></div>
+                    <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${displayDate}</span>
                 </div>
             `;
+
+            // --- LISTENERS DE EVENTOS DO CARD ---
             card.addEventListener('dragstart', handleDragStart);
             card.addEventListener('dragend', handleDragEnd);
+
+            // [# NOVO #] Adiciona o listener de clique direito (contextmenu)
+            card.addEventListener('contextmenu', handleRightClick);
+            
             return card;
         }
 
         /**
-         * [FUNÇÃO CORRIGIDA]
+         * [FUNÇÃO INALTERADA]
          * Carrega os leads, traduzindo 'title' (do dado) para 'id' (da coluna).
          */
         function loadLeads() {
-            
-            // 1. Crie um mapa de Título -> ID
             const stageTitleToIdMap = {};
             stages.forEach(stage => {
                 stageTitleToIdMap[stage.title] = stage.id;
             });
 
-            // 2. Inicialize os "baldes" de leads USANDO O ID
             const leadData = {}; 
             stages.forEach(stage => leadData[stage.id] = []);
 
@@ -230,7 +212,6 @@
                 return;
             }
             
-            // 3. Ao processar os leads, use o mapa para encontrar o ID correto
             initialLeads.forEach(lead => {
                 const leadStageTitle = lead.etapa; 
                 const stageId = stageTitleToIdMap[leadStageTitle]; 
@@ -242,7 +223,6 @@
                 }
             });
 
-            // 4. Renderiza os cards
             stages.forEach(stage => {
                 const container = document.getElementById(`cards-${stage.id}`); 
                 if (!container) return;
@@ -259,7 +239,6 @@
 
         // --- LÓGICA DE DRAG AND DROP (Inalterada) ---
         let draggedLeadId = null;
-
         function handleDragStart(e) {
             draggedLeadId = e.target.getAttribute('data-lead-id');
             e.dataTransfer.setData('text/plain', draggedLeadId); 
@@ -267,16 +246,13 @@
             e.dataTransfer.setData('text/lead-name', e.target.getAttribute('data-lead-name'));
             setTimeout(() => e.target.classList.add('opacity-50'), 0);
         }
-
         function handleDragEnd(e) {
             e.target.classList.remove('opacity-50');
             document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
         }
-
         function handleDragOver(e) { e.preventDefault(); }
         function handleDragEnter(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
         function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
-
         function handleDrop(e) {
             e.preventDefault();
             e.currentTarget.classList.remove('drag-over');
@@ -298,11 +274,6 @@
                 return;
             }
 
-            if (Math.abs(targetIndex - sourceIndex) > 1) {
-                alert('Movimentação Inválida!\n\nNão é permitido pular etapas. Mova o lead para uma etapa adjacente.');
-                return;
-            }
-
             pendingMove = {
                 leadId: leadId,
                 newStageId: newStageId,
@@ -315,7 +286,6 @@
             modalMessage.textContent = `Tem certeza que deseja mover este lead para a etapa "${targetStage.title}"?`;
             modal.classList.remove('modal-hidden');
         }
-
         async function executeMove() {
             if (!pendingMove) return;
 
@@ -323,16 +293,13 @@
             const destinationContainer = document.getElementById(`cards-${newStageId}`);
 
             if (destinationContainer) {
-                // 1. UI Otimista
                 destinationContainer.appendChild(leadToMove);
                 if (sourceStageId) updateCardCount(sourceStageId);
                 updateCardCount(newStageId);
                 leadToMove.setAttribute('data-stage', newStageId);
                 
-                console.log(`Enviando atualização para o servidor: Lead ${leadId} -> ${newStageId}`);
                 leadToMove.classList.add('opacity-75', 'border-2', 'border-blue-500');
 
-                // 2. Chama a API
                 try {
                     const response = await fetch("{{ url_for('main.update_lead_stage') }}", {
                         method: 'POST',
@@ -349,8 +316,6 @@
                     if (!result.success) {
                         throw new Error(result.error || 'Erro desconhecido no servidor');
                     }
-                    console.log('Atualização salva no servidor.');
-
                 } catch (error) {
                     console.error('Falha ao salvar atualização:', error);
                     alert('Erro ao salvar. Recarregando a página para garantir a consistência.');
@@ -361,10 +326,41 @@
             pendingMove = null;
             modal.classList.add('modal-hidden');
         }
-
         function cancelMove() {
             pendingMove = null;
             modal.classList.add('modal-hidden');
+        }
+        
+        // --- [# NOVO #] FUNÇÕES DO MENU DE CONTEXTO ---
+
+        /**
+         * Exibe o menu de contexto customizado.
+         */
+        function handleRightClick(e) {
+            e.preventDefault(); // Impede o menu padrão do navegador
+            
+            const leadCard = e.target.closest('.lead-card');
+            if (!leadCard) return;
+
+            const leadId = leadCard.getAttribute('data-lead-id');
+            
+            // Armazena o ID do lead no próprio menu para referência futura
+            contextMenu.setAttribute('data-lead-id', leadId);
+            
+            // Posiciona o menu onde o usuário clicou
+            contextMenu.style.left = `${e.pageX + 5}px`;
+            contextMenu.style.top = `${e.pageY + 5}px`;
+            
+            // Mostra o menu
+            contextMenu.classList.remove('modal-hidden');
+        }
+
+        /**
+         * Esconde o menu de contexto.
+         */
+        function hideContextMenu() {
+            contextMenu.classList.add('modal-hidden');
+            contextMenu.removeAttribute('data-lead-id');
         }
         
         // --- MONTAGEM DO QUADRO ---
@@ -375,12 +371,10 @@
                 return; 
             }
 
-            // Chama a função que constrói a legenda
-            setupAreasLegend();
+            // [REMOVIDO] A chamada para setupAreasLegend() foi removida.
             
             stages.forEach(stage => {
                 const column = document.createElement('div');
-                // Adiciona 'flex flex-col' para que a coluna use flexbox internamente
                 column.className = 'kanban-column rounded-lg flex flex-col p-4 shadow-lg';
                 column.setAttribute('data-stage-id', stage.id); 
                 column.addEventListener('dragover', handleDragOver);
@@ -389,7 +383,6 @@
                 column.addEventListener('drop', handleDrop);
                 
                 const header = document.createElement('div');
-                // 'flex-shrink-0' previne que o header encolha
                 header.className = 'flex justify-between items-center mb-4 pb-2 border-b-2 border-gray-300 flex-shrink-0';
                 header.innerHTML = `
                     <div class="flex items-center">
@@ -401,8 +394,6 @@
                 
                 const cardsContainer = document.createElement('div');
                 cardsContainer.id = `cards-${stage.id}`; 
-                // 'flex-grow' faz o container de cards ocupar todo o espaço restante
-                // 'overflow-y-auto' adiciona scroll SÓ a este container
                 cardsContainer.className = 'flex-grow overflow-y-auto pt-2 space-y-3';
                 
                 column.appendChild(header);
@@ -412,9 +403,45 @@
             
             loadLeads();
 
+            // --- LISTENERS GLOBAIS ---
+            
+            // Modal de Drag-and-Drop
             modalConfirmBtn.addEventListener('click', executeMove);
             modalCancelBtn.addEventListener('click', cancelMove);
             modalBackdrop.addEventListener('click', cancelMove);
+
+            // [# NOVO #] Listeners do Menu de Contexto
+            
+            // 1. Esconde o menu se o usuário clicar em qualquer lugar
+            window.addEventListener('click', hideContextMenu);
+            
+            // 2. Ação para o botão "Editar"
+            contextMenuEdit.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // Impede o 'window.click' de fechar o menu
+                
+                const leadId = contextMenu.getAttribute('data-lead-id');
+                if (leadId) {
+                    // AÇÃO: Redireciona para a página de edição
+                    console.log(`Redirecionando para editar o lead: ${leadId}`);
+                    window.location.href = `/leads/editar/${leadId}`;
+                }
+                hideContextMenu();
+            });
+
+            // 3. Ação para o botão "Histórico" (Exemplo)
+            contextMenuHistory.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); 
+                
+                const leadId = contextMenu.getAttribute('data-lead-id');
+                if (leadId) {
+                    // AÇÃO: Abre o histórico (ex: num modal)
+                    alert(`Abrir histórico do Lead ID: ${leadId}`);
+                    // Aqui você chamaria uma função como openHistoryModal(leadId)
+                }
+                hideContextMenu();
+            });
         }
 
         // Inicia o app
