@@ -45,6 +45,12 @@
                     <span class="nav-label whitespace-nowrap">Gestão de Leads</span>
                 </span>
             </a>
+            <a href="{{ url_for('main.kanban_board_posvenda') }}" class="nav-item px-3 py-2 rounded-lg text-sm font-medium flex items-center transition duration-150 justify-start {% if active_page == 'main.kanban_board_posvenda' %}bg-indigo-600 text-white hover:bg-indigo-700{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trello flex-shrink-0 mr-3"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="7" y="7" width="3" height="9"/><rect x="14" y="7" width="3" height="5"/></svg>
+                <span class="nav-text-wrapper text-transition opacity-100 flex-1 overflow-hidden">
+                    <span class="nav-label whitespace-nowrap">Gestão de Pós Venda</span>
+                </span>
+            </a>
             <a href="{{ url_for('main.client_list_page') }}" class="nav-item px-3 py-2 rounded-lg text-sm font-medium flex items-center transition duration-150 justify-start {% if active_page == 'main.client_list_page' %}bg-indigo-600 text-white hover:bg-indigo-700{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users flex-shrink-0 mr-3"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span class="nav-text-wrapper text-transition opacity-100 flex-1 overflow-hidden">

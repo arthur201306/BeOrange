@@ -27,7 +27,10 @@ def test_supabase_query():
         print("Consultando dados da tabela 'clientes'...")
 
         # Realiza a consulta passando as colunas como uma string separada por vírgula
-        response = supabase.table('clientes').select(KANBAN_COLUMNS).order('created_at', desc=True).execute()
+        response = supabase.table('clientes').select(
+        "id, nome_empresa, nome_contato, etapa, responsavel(id, nome), created_at, areas(nome)"
+    ).order('created_at', desc=True).execute()
+    
 
         # Adicionando um log para ver o conteúdo da resposta
         print("Resposta do Supabase:", response)

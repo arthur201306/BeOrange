@@ -4,6 +4,7 @@
 
 {% block head_extra %}
     <style>
+        /* Estilos base para o Kanban */
         .kanban-board {
             overflow-x: auto;
             white-space: nowrap;
@@ -12,27 +13,33 @@
         }
         .kanban-column {
             width: 300px;
-            background-color: #eef2f6;
+            background-color: #eef2f6; /* Cor de fundo da coluna */
             margin-right: 1rem;
             white-space: normal;
+            flex-shrink: 0;
         }
+        
+        /* Estilos de Card e Drag & Drop */
         .lead-card {
             transition: transform 0.2s, box-shadow 0.2s;
             cursor: grab;
         }
         .lead-card:active {
             cursor: grabbing;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 4px, 6px, 0.05);
             transform: scale(1.01);
         }
         .drag-over {
-            box-shadow: 0 0 0 4px #2563eb inset;
+            /* Estilo ao arrastar um card sobre a coluna */
+            box-shadow: 0 0 0 4px #2563eb inset; 
         }
+
+        /* Scrollbar customizada */
         .kanban-board::-webkit-scrollbar { height: 8px; }
         .kanban-board::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .kanban-board::-webkit-scrollbar-track { background: #f1f1f1; }
 
-        /* --- CSS PARA O MODAL (Inalterado) --- */
+        /* Estilos de Modal */
         .modal-backdrop {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -46,16 +53,24 @@
             z-index: 50;
         }
         .modal-hidden {
+            /* Regra base de ocultação */
             display: none;
         }
 
-        /* [# ATUALIZADO #] Garante que o menu de contexto fique acima de tudo */
+        /* Menu de Contexto (Clique Direito) */
         #context-menu {
             z-index: 100;
         }
+        
+        /* 🚨 CORREÇÃO CSS FINAL: Garante que o item oculto dentro do menu de contexto permaneça oculto. */
+        #context-menu .modal-hidden {
+            display: none !important; 
+        }
+
     </style>
 {% endblock %}
 
+---
 
 {% block content %}
     <h1 class="text-2xl font-semibold text-gray-800 mb-4">Pipeline de Vendas</h1>
@@ -67,7 +82,7 @@
     {% endif %}
 
     <div id="board-container" class="kanban-board flex p-2">
-        </div>
+    </div>
 
     <div id="confirmation-modal" class="modal-hidden">
         <div id="modal-backdrop" class="modal-backdrop"></div>
@@ -92,10 +107,15 @@
         <a href="#" id="context-menu-history" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
             Ver Histórico
         </a>
+        <div id="context-menu-separator" class="border-t border-gray-200 my-1 modal-hidden"></div>
+        <a href="#" id="context-menu-post-sale" class="block px-4 py-2 text-sm text-green-700 hover:bg-green-50 hover:text-green-900 modal-hidden font-medium">
+            Mover para Pós-Venda
+        </a>
     </div>
 
 {% endblock %}
 
+---
 
 {% block scripts %}
     <script>
@@ -105,8 +125,17 @@
         const serverError = {{ error | tojson }};
         const areasColors = {{ areas_colors_json | tojson }};
         const defaultAreaColor = areasColors['default'] || 'text-gray-800 bg-gray-100';
-
-        // --- LÓGICA DE ESTADO DO MODAL ---
+        
+        // 🚨 CONFIGURAÇÃO: O ID do estágio final em minúsculas
+        const FINALIZED_STAGE_ID = 'finalizado'; 
+        
+        // Mapeamento Seguro: Cria um mapa para busca rápida e robusta
+        const stageIdMap = new Map();
+        stages.forEach(stage => {
+            stageIdMap.set(stage.title.trim().toLowerCase(), stage.id.trim().toLowerCase());
+        });
+        
+        // --- VARIÁVEIS DE ESTADO E DOM ---
         const modal = document.getElementById('confirmation-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalMessage = document.getElementById('modal-message');
@@ -115,16 +144,14 @@
         const modalBackdrop = document.getElementById('modal-backdrop');
         let pendingMove = null;
 
-        // --- [# NOVO #] VARIÁVEIS DO MENU DE CONTEXTO ---
         const contextMenu = document.getElementById('context-menu');
         const contextMenuEdit = document.getElementById('context-menu-edit');
         const contextMenuHistory = document.getElementById('context-menu-history');
+        const contextMenuPostSale = document.getElementById('context-menu-post-sale');
+        const contextMenuSeparator = document.getElementById('context-menu-separator');
 
-        if (serverError && !initialLeads.length) {
-            console.error("Erro vindo do Servidor (Python):", serverError);
-        }
+        // --- FUNÇÕES DE RENDERIZAÇÃO E DADOS ---
 
-        // --- FUNÇÕES DE RENDERIZAÇÃO DE DADOS ---
         function updateCardCount(stageId) {
             const container = document.getElementById(`cards-${stageId}`);
             const countDisplay = document.getElementById(`count-${stageId}`);
@@ -133,43 +160,36 @@
             }
         }
         
-        // [REMOVIDO] A função setupAreasLegend() foi removida.
-
-        /**
-         * [FUNÇÃO ATUALIZADA]
-         * Cria um card de lead com Badges e listener de clique direito.
-         */
+        function getAreaTagsHTML(areasArray) {
+             if (!areasArray || areasArray.length === 0) return '';
+             
+             return areasArray.map(area => {
+                 const colorClasses = areasColors[area] || defaultAreaColor;
+                 return `<span class="inline-block px-2 py-0.5 ${colorClasses} rounded-full text-xs font-medium" title="${area}">
+                             ${area}
+                         </span>`;
+             }).join('');
+        }
+        
         function createLeadCard(lead) {
             const card = document.createElement('div');
             card.id = `lead-${lead.id}`;
             card.classList.add('lead-card', 'p-4', 'bg-white', 'rounded-lg', 'shadow', 'mb-3', 'hover:shadow-md');
             card.setAttribute('draggable', 'true');
             card.setAttribute('data-lead-id', lead.id);
-            card.setAttribute('data-stage', lead.etapa);
             card.setAttribute('data-lead-name', lead.nome_empresa || 'Novo Cliente');
 
-            let displayDate = 'Sem data';
-            if (lead.created_at) {
-                displayDate = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            }
+            const leadEtapaCleanKey = lead.etapa ? lead.etapa.trim().toLowerCase() : '';
+            const stageId = stageIdMap.get(leadEtapaCleanKey) || 'unknown'; 
 
-            // --- ATUALIZADO: Lógica das Badges ---
-            let areaTagsHTML = ''; 
-            let areasArray = []; 
-            if (lead.areas && Array.isArray(lead.areas)) {
-                areasArray = lead.areas;
-            }
-            
-            if (areasArray.length > 0) {
-                areaTagsHTML = areasArray.map(area => {
-                    const colorClasses = areasColors[area] || defaultAreaColor;
-                    return `<span class="inline-block px-2 py-0.5 ${colorClasses} rounded-full text-xs font-medium" title="${area}">
-                                ${area}
-                            </span>`;
-                }).join('');
-            }
+            card.setAttribute('data-stage-id', stageId); 
 
-            // --- ATUALIZADO: Layout do Card ---
+            const displayDate = lead.created_at 
+                ? new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) 
+                : 'Sem data';
+
+            const areaTagsHTML = getAreaTagsHTML(lead.areas);
+
             card.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
                     <h3 class="font-semibold text-gray-800 text-sm">${lead.nome_empresa || 'Novo Cliente'}</h3>
@@ -178,66 +198,52 @@
                     ${areaTagsHTML}
                 </div>
                 <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
-                    <p class="text-xs text-gray-400">Owner: ${lead.responsavel || 'N/A'}</p>
+                    <p class="text-xs text-gray-400">Owner: ${lead.responsavel?.nome || 'N/A'}</p>
                     <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${displayDate}</span>
                 </div>
             `;
 
-            // --- LISTENERS DE EVENTOS DO CARD ---
             card.addEventListener('dragstart', handleDragStart);
             card.addEventListener('dragend', handleDragEnd);
-
-            // [# NOVO #] Adiciona o listener de clique direito (contextmenu)
             card.addEventListener('contextmenu', handleRightClick);
             
             return card;
         }
 
-        /**
-         * [FUNÇÃO INALTERADA]
-         * Carrega os leads, traduzindo 'title' (do dado) para 'id' (da coluna).
-         */
         function loadLeads() {
-            const stageTitleToIdMap = {};
-            stages.forEach(stage => {
-                stageTitleToIdMap[stage.title] = stage.id;
-            });
-
             const leadData = {}; 
-            stages.forEach(stage => leadData[stage.id] = []);
+            stages.forEach(stage => leadData[stage.id.trim().toLowerCase()] = []); 
 
             if (!initialLeads || initialLeads.length === 0) {
-                if(!serverError) console.warn('Nenhum lead recebido do servidor.');
-                stages.forEach(stage => updateCardCount(stage.id));
+                stages.forEach(stage => updateCardCount(stage.id.trim().toLowerCase()));
                 return;
             }
             
             initialLeads.forEach(lead => {
-                const leadStageTitle = lead.etapa; 
-                const stageId = stageTitleToIdMap[leadStageTitle]; 
+                const leadEtapaCleanKey = lead.etapa ? lead.etapa.trim().toLowerCase() : '';
+                const stageId = stageIdMap.get(leadEtapaCleanKey); 
 
-                if (leadData[stageId]) {
+                if (stageId && leadData[stageId]) {
                     leadData[stageId].push(lead);
-                } else if(leadStageTitle) { 
-                    console.warn(`Lead ${lead.id} tem uma etapa desconhecida: '${leadStageTitle}' (Não foi encontrada no mapa)`);
                 }
             });
 
             stages.forEach(stage => {
-                const container = document.getElementById(`cards-${stage.id}`); 
+                const stageIdKey = stage.id.trim().toLowerCase();
+                const container = document.getElementById(`cards-${stageIdKey}`); 
                 if (!container) return;
                 
-                leadData[stage.id].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                leadData[stageIdKey].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                 
-                leadData[stage.id].forEach(lead => {
+                leadData[stageIdKey].forEach(lead => {
                     container.appendChild(createLeadCard(lead));
                 });
                 
-                updateCardCount(stage.id);
+                updateCardCount(stageIdKey);
             });
         }
 
-        // --- LÓGICA DE DRAG AND DROP (Inalterada) ---
+        // --- LÓGICA DE DRAG AND DROP ---
         let draggedLeadId = null;
         function handleDragStart(e) {
             draggedLeadId = e.target.getAttribute('data-lead-id');
@@ -253,6 +259,7 @@
         function handleDragOver(e) { e.preventDefault(); }
         function handleDragEnter(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
         function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+        
         function handleDrop(e) {
             e.preventDefault();
             e.currentTarget.classList.remove('drag-over');
@@ -262,18 +269,10 @@
             const leadId = e.dataTransfer.getData('text/plain');
             const leadName = e.dataTransfer.getData('text/lead-name');
             
-            if (!newStageId || !leadId || newStageId === sourceStageId) {
-                return;
-            }
+            if (!newStageId || !leadId || newStageId === sourceStageId) { return; }
 
-            const sourceIndex = stages.findIndex(s => s.id === sourceStageId);
-            const targetIndex = stages.findIndex(s => s.id === newStageId);
+            const targetStage = stages.find(s => s.id.trim().toLowerCase() === newStageId);
             
-            if (sourceIndex === -1 || targetIndex === -1) {
-                console.error("Etapa de origem ou destino desconhecida.");
-                return;
-            }
-
             pendingMove = {
                 leadId: leadId,
                 newStageId: newStageId,
@@ -281,22 +280,28 @@
                 leadToMove: document.getElementById(`lead-${leadId}`)
             };
             
-            const targetStage = stages[targetIndex];
             modalTitle.textContent = `Mover "${leadName}"`;
             modalMessage.textContent = `Tem certeza que deseja mover este lead para a etapa "${targetStage.title}"?`;
+            
+            modalConfirmBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            modalConfirmBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+
             modal.classList.remove('modal-hidden');
         }
+        
         async function executeMove() {
             if (!pendingMove) return;
 
             const { leadId, newStageId, sourceStageId, leadToMove } = pendingMove;
             const destinationContainer = document.getElementById(`cards-${newStageId}`);
+            
+            const newStageTitle = stages.find(s => s.id.trim().toLowerCase() === newStageId)?.title;
 
             if (destinationContainer) {
                 destinationContainer.appendChild(leadToMove);
                 if (sourceStageId) updateCardCount(sourceStageId);
                 updateCardCount(newStageId);
-                leadToMove.setAttribute('data-stage', newStageId);
+                leadToMove.setAttribute('data-stage-id', newStageId);
                 
                 leadToMove.classList.add('opacity-75', 'border-2', 'border-blue-500');
 
@@ -306,7 +311,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             lead_id: leadId,
-                            new_stage: newStageId
+                            new_stage: newStageTitle 
                         })
                     });
                     
@@ -326,57 +331,119 @@
             pendingMove = null;
             modal.classList.add('modal-hidden');
         }
+        
         function cancelMove() {
             pendingMove = null;
             modal.classList.add('modal-hidden');
         }
         
-        // --- [# NOVO #] FUNÇÕES DO MENU DE CONTEXTO ---
+        // --- LÓGICA DO MENU DE CONTEXTO ---
 
-        /**
-         * Exibe o menu de contexto customizado.
-         */
-        function handleRightClick(e) {
-            e.preventDefault(); // Impede o menu padrão do navegador
-            
-            const leadCard = e.target.closest('.lead-card');
-            if (!leadCard) return;
-
-            const leadId = leadCard.getAttribute('data-lead-id');
-            
-            // Armazena o ID do lead no próprio menu para referência futura
-            contextMenu.setAttribute('data-lead-id', leadId);
-            
-            // Posiciona o menu onde o usuário clicou
-            contextMenu.style.left = `${e.pageX + 5}px`;
-            contextMenu.style.top = `${e.pageY + 5}px`;
-            
-            // Mostra o menu
-            contextMenu.classList.remove('modal-hidden');
-        }
-
-        /**
-         * Esconde o menu de contexto.
-         */
         function hideContextMenu() {
             contextMenu.classList.add('modal-hidden');
             contextMenu.removeAttribute('data-lead-id');
+            contextMenu.removeAttribute('data-stage-id');
+        }
+
+        // 🚨 FUNÇÃO CORRIGIDA: LÊ O ID DA COLUNA PAI (MAIS ESTÁVEL) E CONTROLA VISIBILIDADE
+        function handleRightClick(e) {
+            e.preventDefault(); 
+            
+            const leadCard = e.target.closest('.lead-card');
+            if (!leadCard) {
+                 hideContextMenu();
+                 return;
+            }
+
+            const leadId = leadCard.getAttribute('data-lead-id');
+            
+            // LÊ O ID da COLUNA PAI
+            const parentColumn = leadCard.closest('.kanban-column');
+            const currentStageId = parentColumn ? parentColumn.getAttribute('data-stage-id') : 'unknown';
+            
+            contextMenu.setAttribute('data-lead-id', leadId);
+            contextMenu.setAttribute('data-stage-id', currentStageId);
+            
+            // Lógica: Se for FINALIZADO, MOSTRA. Se não, ESCONDE.
+            if (currentStageId === FINALIZED_STAGE_ID) {
+                contextMenuPostSale.classList.remove('modal-hidden');
+                contextMenuSeparator.classList.remove('modal-hidden');
+            } else {
+                contextMenuPostSale.classList.add('modal-hidden');
+                contextMenuSeparator.classList.add('modal-hidden');
+            }
+            
+            contextMenu.style.left = `${e.pageX + 5}px`;
+            contextMenu.style.top = `${e.pageY + 5}px`;
+            contextMenu.classList.remove('modal-hidden');
+            
+            e.stopPropagation();
+        }
+        
+        // 🟢 FUNÇÃO DE PÓS-VENDA
+        async function moveToPostSale() {
+            hideContextMenu();
+
+            const leadId = contextMenu.getAttribute('data-lead-id');
+
+            if (!leadId) return; 
+
+            const leadToMove = document.getElementById(`lead-${leadId}`);
+
+            if (!leadToMove) {
+                console.warn(`Tentativa de mover lead ${leadId}, mas o card já foi removido ou não foi encontrado.`);
+                alert(`O lead ID ${leadId} parece já ter sido movido. Por favor, recarregue a página.`);
+                return; 
+            }
+            
+            const leadName = leadToMove.getAttribute('data-lead-name');
+
+            if (!confirm(`Confirma mover o lead "${leadName}" para o Pós-Venda? Esta ação o removerá do Kanban de Vendas.`)) {
+                return;
+            }
+            
+            leadToMove.classList.add('opacity-50', 'border-2', 'border-green-500');
+
+            try {
+                const response = await fetch("{{ url_for('main.move_to_post_sale') }}", { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lead_id: leadId,
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    leadToMove.remove();
+                    updateCardCount(FINALIZED_STAGE_ID);
+                    alert(`Lead "${leadName}" movido com sucesso para o Pós-Venda!`);
+                } else {
+                    alert('Erro ao mover para Pós-Venda: ' + (result.error || 'Erro desconhecido.'));
+                    leadToMove.classList.remove('opacity-50', 'border-2', 'border-green-500');
+                }
+            } catch (error) {
+                console.error('Falha na comunicação com a API:', error);
+                alert('Erro de rede ao mover para Pós-Venda.');
+                leadToMove.classList.remove('opacity-50', 'border-2', 'border-green-500');
+            }
         }
         
         // --- MONTAGEM DO QUADRO ---
         function setupBoard() {
             const boardContainer = document.getElementById('board-container');
+            
             if (!boardContainer) { 
                 console.error("Elemento 'board-container' não encontrado.");
                 return; 
             }
 
-            // [REMOVIDO] A chamada para setupAreasLegend() foi removida.
-            
             stages.forEach(stage => {
+                const stageIdKey = stage.id.trim().toLowerCase(); // Garante que o ID do DOM está em minúsculas
                 const column = document.createElement('div');
                 column.className = 'kanban-column rounded-lg flex flex-col p-4 shadow-lg';
-                column.setAttribute('data-stage-id', stage.id); 
+                column.setAttribute('data-stage-id', stageIdKey); // Usa o ID em minúsculas
                 column.addEventListener('dragover', handleDragOver);
                 column.addEventListener('dragenter', handleDragEnter);
                 column.addEventListener('dragleave', handleDragLeave);
@@ -389,11 +456,11 @@
                         <span class="w-3 h-3 rounded-full ${stage.color} mr-2"></span>
                         <h2 class="font-bold text-sm text-gray-700">${stage.title}</h2>
                     </div>
-                    <span id="count-${stage.id}" class="text-xs font-semibold text-gray-500 px-2 py-1 bg-gray-200 rounded-full">0</span>
+                    <span id="count-${stageIdKey}" class="text-xs font-semibold text-gray-500 px-2 py-1 bg-gray-200 rounded-full">0</span>
                 `;
                 
                 const cardsContainer = document.createElement('div');
-                cardsContainer.id = `cards-${stage.id}`; 
+                cardsContainer.id = `cards-${stageIdKey}`; 
                 cardsContainer.className = 'flex-grow overflow-y-auto pt-2 space-y-3';
                 
                 column.appendChild(header);
@@ -410,41 +477,38 @@
             modalCancelBtn.addEventListener('click', cancelMove);
             modalBackdrop.addEventListener('click', cancelMove);
 
-            // [# NOVO #] Listeners do Menu de Contexto
-            
-            // 1. Esconde o menu se o usuário clicar em qualquer lugar
+            // Esconder Menu de Contexto
             window.addEventListener('click', hideContextMenu);
+            window.addEventListener('contextmenu', hideContextMenu); 
             
-            // 2. Ação para o botão "Editar"
+            // Ações do Menu de Contexto
             contextMenuEdit.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopPropagation(); // Impede o 'window.click' de fechar o menu
-                
+                e.stopPropagation(); 
                 const leadId = contextMenu.getAttribute('data-lead-id');
                 if (leadId) {
-                    // AÇÃO: Redireciona para a página de edição
-                    console.log(`Redirecionando para editar o lead: ${leadId}`);
                     window.location.href = `/leads/editar/${leadId}`;
                 }
                 hideContextMenu();
             });
 
-            // 3. Ação para o botão "Histórico" (Exemplo)
             contextMenuHistory.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation(); 
-                
                 const leadId = contextMenu.getAttribute('data-lead-id');
                 if (leadId) {
-                    // AÇÃO: Abre o histórico (ex: num modal)
                     alert(`Abrir histórico do Lead ID: ${leadId}`);
-                    // Aqui você chamaria uma função como openHistoryModal(leadId)
                 }
                 hideContextMenu();
             });
+            
+            contextMenuPostSale.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); 
+                moveToPostSale();
+            });
         }
 
-        // Inicia o app
         document.addEventListener('DOMContentLoaded', setupBoard);
     </script>
 {% endblock %}

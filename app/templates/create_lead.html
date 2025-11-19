@@ -55,9 +55,15 @@
 
                     <div>
                         <label for="responsavel" class="block text-sm font-medium text-gray-700">Responsável (Owner)</label>
-                        <input type="text" name="responsavel" id="responsavel" 
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                               placeholder="Ex: João Silva">
+                        <select name="responsavel" id="responsavel" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            <option value="">Selecione um funcionário</option>
+                            {% for employee in all_employees %}
+                                <option value="{{ employee.id }}"
+                                    {% if lead and lead.responsavel_id == employee.id %}selected{% endif %}>
+                                    {{ employee.nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
                     </div>
 
                     <div>

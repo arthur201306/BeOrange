@@ -1,0 +1,448 @@
+{% extends "layout_sidebar.html" %}
+
+{% block title %}Pipeline de Pós Venda - CRM{% endblock %}
+
+{% block head_extra %}
+    <style>
+        .kanban-board {
+            overflow-x: auto;
+            white-space: nowrap;
+            height: calc(100vh - 200px); 
+            padding-bottom: 1rem;
+        }
+        .kanban-column {
+            width: 300px;
+            background-color: #eef2f6;
+            margin-right: 1rem;
+            white-space: normal;
+        }
+        .post-sale-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: grab;
+        }
+        .post-sale-card:active {
+            cursor: grabbing;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: scale(1.01);
+        }
+        .drag-over {
+            box-shadow: 0 0 0 4px #10b981 inset; /* Cor verde para Pós-Venda */
+        }
+        .kanban-board::-webkit-scrollbar { height: 8px; }
+        .kanban-board::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .kanban-board::-webkit-scrollbar-track { background: #f1f1f1; }
+
+        /* --- CSS PARA O MODAL (Inalterado) --- */
+        .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+        }
+        .modal-content {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+        }
+        .modal-hidden {
+            display: none;
+        }
+
+        #context-menu {
+            z-index: 100;
+        }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+    <h1 class="text-2xl font-semibold text-gray-800 mb-4">Pipeline de Pós Venda</h1>
+        
+    {% if error %}
+        <div class="text-center text-red-600 font-semibold p-4 bg-red-100 border border-red-300 rounded-lg mb-4">
+            <strong>Erro ao carregar dados:</strong> {{ error }}
+        </div>
+    {% endif %}
+
+    <div id="board-container" class="kanban-board flex p-2">
+        </div>
+
+    <div id="confirmation-modal" class="modal-hidden">
+        <div id="modal-backdrop" class="modal-backdrop"></div>
+        <div class="modal-content bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 id="modal-title" class="text-lg font-bold text-gray-900 mb-4">Confirmar Movimentação</h3>
+            <p id="modal-message" class="text-gray-700 mb-6">Tem certeza que deseja mover este cliente de Pós-Venda?</p>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="context-menu" class="modal-hidden absolute bg-white rounded-md shadow-lg py-1 w-48 border border-gray-200">
+        <a href="#" id="context-menu-edit" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+            Editar Cliente
+        </a>
+        <a href="#" id="context-menu-history" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+            Ver Histórico
+        </a>
+    </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+    <script>
+        // --- DADOS DINÂMICOS INJETADOS PELO FLASK ---
+        // [# MUDANÇA #] Variáveis renomeadas para Pós-Venda
+        const initialPostSaleClients = {{ all_pos_venda_json | tojson }};
+        const stages = {{ all_stages_pos_venda_json | tojson }}; 
+        const serverError = {{ error | tojson }};
+        const areasColors = {{ areas_colors_json | tojson }};
+        const defaultAreaColor = areasColors['default'] || 'text-gray-800 bg-gray-100';
+
+        // --- LÓGICA DE ESTADO DO MODAL ---
+        const modal = document.getElementById('confirmation-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        let pendingMove = null;
+
+        // --- VARIÁVEIS DO MENU DE CONTEXTO ---
+        const contextMenu = document.getElementById('context-menu');
+        const contextMenuEdit = document.getElementById('context-menu-edit');
+        const contextMenuHistory = document.getElementById('context-menu-history');
+
+        if (serverError && !initialPostSaleClients.length) {
+            console.error("Erro vindo do Servidor (Python):", serverError);
+        }
+
+        // --- FUNÇÕES DE RENDERIZAÇÃO DE DADOS ---
+        function updateCardCount(stageId) {
+            const container = document.getElementById(`cards-${stageId}`);
+            const countDisplay = document.getElementById(`count-${stageId}`);
+            if (container && countDisplay) {
+                countDisplay.textContent = `${container.children.length} clientes/projetos`;
+            }
+        }
+        
+        /**
+         * Cria um card de cliente de Pós-Venda com Badges e listener de clique direito.
+         */
+        function createPostSaleCard(client) {
+            const card = document.createElement('div');
+            card.id = `client-${client.id}`; // [# MUDANÇA #] ID de cliente de pós-venda
+            card.classList.add('post-sale-card', 'p-4', 'bg-white', 'rounded-lg', 'shadow', 'mb-3', 'hover:shadow-md');
+            card.setAttribute('draggable', 'true');
+            card.setAttribute('data-client-id', client.id);
+            // [# MUDANÇA #] Etapa agora se chama etapa_posvenda
+            card.setAttribute('data-stage', client.etapa_posvenda); 
+            card.setAttribute('data-client-name', client.nome_empresa || 'Novo Cliente');
+
+            let displayDate = 'Sem data';
+            // Assumindo que a data de criação/venda é relevante
+            if (client.created_at || client.data_venda) { 
+                const dateSource = client.data_venda || client.created_at;
+                displayDate = new Date(dateSource).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
+
+            // --- Lógica das Badges (Áreas) ---
+            let areaTagsHTML = ''; 
+            let areasArray = []; 
+            if (client.areas && Array.isArray(client.areas)) {
+                areasArray = client.areas;
+            }
+            
+            if (areasArray.length > 0) {
+                areaTagsHTML = areasArray.map(area => {
+                    const colorClasses = areasColors[area] || defaultAreaColor;
+                    return `<span class="inline-block px-2 py-0.5 ${colorClasses} rounded-full text-xs font-medium" title="${area}">
+                                ${area}
+                            </span>`;
+                }).join('');
+            }
+
+            // --- Layout do Card ---
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="font-semibold text-gray-800 text-sm">${client.nome_empresa || 'Novo Cliente'}</h3>
+                </div>
+                <div class="flex flex-wrap gap-1 mb-3">
+                    ${areaTagsHTML}
+                </div>
+                <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
+                    <p class="text-xs text-gray-400">Owner: ${client.responsavel.nome || 'N/A'}</p>
+                    <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${displayDate}</span>
+                </div>
+            `;
+
+            // --- LISTENERS DE EVENTOS DO CARD ---
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragend', handleDragEnd);
+            card.addEventListener('contextmenu', handleRightClick);
+            
+            return card;
+        }
+
+        /**
+         * Carrega os clientes de Pós-Venda nas colunas.
+         */
+        function loadPostSaleClients() {
+            const stageTitleToIdMap = {};
+            stages.forEach(stage => {
+                stageTitleToIdMap[stage.title] = stage.id;
+            });
+
+            const clientData = {}; 
+            stages.forEach(stage => clientData[stage.id] = []);
+
+            if (!initialPostSaleClients || initialPostSaleClients.length === 0) {
+                if(!serverError) console.warn('Nenhum cliente de pós-venda recebido do servidor.');
+                stages.forEach(stage => updateCardCount(stage.id));
+                return;
+            }
+            
+            initialPostSaleClients.forEach(client => {
+                // [# MUDANÇA #] Usando etapa_posvenda como a chave
+                const clientStageTitle = client.etapa_posvenda; 
+                const stageId = stageTitleToIdMap[clientStageTitle]; 
+
+                if (clientData[stageId]) {
+                    clientData[stageId].push(client);
+                } else if(clientStageTitle) { 
+                    console.warn(`Cliente ${client.id} tem uma etapa de pós-venda desconhecida: '${clientStageTitle}'`);
+                }
+            });
+
+            stages.forEach(stage => {
+                const container = document.getElementById(`cards-${stage.id}`); 
+                if (!container) return;
+                
+                // Ordenação pela data de criação/venda
+                clientData[stage.id].sort((a, b) => new Date(b.created_at || b.data_venda) - new Date(a.created_at || a.data_venda));
+                
+                clientData[stage.id].forEach(client => {
+                    container.appendChild(createPostSaleCard(client));
+                });
+                
+                updateCardCount(stage.id);
+            });
+        }
+
+        // --- LÓGICA DE DRAG AND DROP ---
+        let draggedClientId = null;
+        function handleDragStart(e) {
+            // [# MUDANÇA #] Usando data-client-id
+            draggedClientId = e.target.getAttribute('data-client-id');
+            e.dataTransfer.setData('text/plain', draggedClientId); 
+            e.dataTransfer.setData('text/stage-origin', e.target.parentElement.id.replace('cards-', ''));
+            e.dataTransfer.setData('text/client-name', e.target.getAttribute('data-client-name'));
+            setTimeout(() => e.target.classList.add('opacity-50'), 0);
+        }
+        function handleDragEnd(e) {
+            e.target.classList.remove('opacity-50');
+            document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
+        }
+        function handleDragOver(e) { e.preventDefault(); }
+        function handleDragEnter(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+        function handleDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            
+            const newStageId = e.currentTarget.getAttribute('data-stage-id');
+            const sourceStageId = e.dataTransfer.getData('text/stage-origin');
+            const clientId = e.dataTransfer.getData('text/plain');
+            const clientName = e.dataTransfer.getData('text/client-name');
+            
+            if (!newStageId || !clientId || newStageId === sourceStageId) {
+                return;
+            }
+
+            const sourceIndex = stages.findIndex(s => s.id === sourceStageId);
+            const targetIndex = stages.findIndex(s => s.id === newStageId);
+            
+            if (sourceIndex === -1 || targetIndex === -1) {
+                console.error("Etapa de origem ou destino desconhecida.");
+                return;
+            }
+
+            pendingMove = {
+                clientId: clientId,
+                newStageId: newStageId,
+                sourceStageId: sourceStageId,
+                clientToMove: document.getElementById(`client-${clientId}`)
+            };
+            
+            const targetStage = stages[targetIndex];
+            modalTitle.textContent = `Mover "${clientName}"`;
+            modalMessage.textContent = `Tem certeza que deseja mover este cliente para a etapa "${targetStage.title}"?`;
+            modalConfirmBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700'); // Remove cor de Lead
+            modalConfirmBtn.classList.add('bg-green-600', 'hover:bg-green-700'); // Adiciona cor de Pós-Venda
+            modal.classList.remove('modal-hidden');
+        }
+        async function executeMove() {
+            if (!pendingMove) return;
+
+            const { clientId, newStageId, sourceStageId, clientToMove } = pendingMove;
+            const destinationContainer = document.getElementById(`cards-${newStageId}`);
+            
+            // Revertendo o movimento visualmente no caso de falha.
+            const originalParent = document.getElementById(`cards-${sourceStageId}`);
+
+            if (destinationContainer) {
+                // Movimenta o card
+                destinationContainer.appendChild(clientToMove);
+                if (sourceStageId) updateCardCount(sourceStageId);
+                updateCardCount(newStageId);
+                clientToMove.setAttribute('data-stage', newStageId);
+                
+                clientToMove.classList.add('opacity-75', 'border-2', 'border-green-500'); // Cor de Pós-Venda
+
+                try {
+                    // [# MUDANÇA #] Rota API específica para Pós-Venda
+                    const response = await fetch("{{ url_for('main.update_post_sale_stage') }}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            client_id: clientId, // Renomeado para client_id
+                            new_stage: newStageId // A etapa_posvenda
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    clientToMove.classList.remove('opacity-75', 'border-2', 'border-green-500');
+
+                    if (!result.success) {
+                        // Reverte o movimento visual no caso de falha da API
+                        originalParent.appendChild(clientToMove); 
+                        clientToMove.setAttribute('data-stage', sourceStageId);
+                        if (sourceStageId) updateCardCount(sourceStageId);
+                        updateCardCount(newStageId); // Atualiza novamente a contagem da coluna de destino (agora com -1)
+                        
+                        throw new Error(result.error || 'Erro desconhecido no servidor');
+                    }
+                } catch (error) {
+                    console.error('Falha ao salvar atualização no Pós-Venda:', error);
+                    alert('Erro ao salvar. O movimento foi desfeito.');
+                    // Nenhuma recarga necessária se a reversão visual for feita acima
+                }
+            }
+            
+            pendingMove = null;
+            modal.classList.add('modal-hidden');
+        }
+        function cancelMove() {
+            pendingMove = null;
+            modal.classList.add('modal-hidden');
+        }
+        
+        // --- FUNÇÕES DO MENU DE CONTEXTO ---
+        function handleRightClick(e) {
+            e.preventDefault(); 
+            
+            const clientCard = e.target.closest('.post-sale-card');
+            if (!clientCard) return;
+
+            const clientId = clientCard.getAttribute('data-client-id');
+            
+            contextMenu.setAttribute('data-client-id', clientId);
+            
+            contextMenu.style.left = `${e.pageX + 5}px`;
+            contextMenu.style.top = `${e.pageY + 5}px`;
+            
+            contextMenu.classList.remove('modal-hidden');
+        }
+
+        function hideContextMenu() {
+            contextMenu.classList.add('modal-hidden');
+            contextMenu.removeAttribute('data-client-id');
+        }
+        
+        // --- MONTAGEM DO QUADRO ---
+        function setupBoard() {
+            const boardContainer = document.getElementById('board-container');
+            if (!boardContainer) { 
+                console.error("Elemento 'board-container' não encontrado.");
+                return; 
+            }
+            
+            stages.forEach(stage => {
+                const column = document.createElement('div');
+                column.className = 'kanban-column rounded-lg flex flex-col p-4 shadow-lg';
+                column.setAttribute('data-stage-id', stage.id); 
+                column.addEventListener('dragover', handleDragOver);
+                column.addEventListener('dragenter', handleDragEnter);
+                column.addEventListener('dragleave', handleDragLeave);
+                column.addEventListener('drop', handleDrop);
+                
+                const header = document.createElement('div');
+                header.className = 'flex justify-between items-center mb-4 pb-2 border-b-2 border-gray-300 flex-shrink-0';
+                header.innerHTML = `
+                    <div class="flex items-center">
+                        <span class="w-3 h-3 rounded-full ${stage.color} mr-2"></span>
+                        <h2 class="font-bold text-sm text-gray-700">${stage.title}</h2>
+                    </div>
+                    <span id="count-${stage.id}" class="text-xs font-semibold text-gray-500 px-2 py-1 bg-gray-200 rounded-full">0</span>
+                `;
+                
+                const cardsContainer = document.createElement('div');
+                cardsContainer.id = `cards-${stage.id}`; 
+                cardsContainer.className = 'flex-grow overflow-y-auto pt-2 space-y-3';
+                
+                column.appendChild(header);
+                column.appendChild(cardsContainer);
+                boardContainer.appendChild(column);
+            });
+            
+            // [# MUDANÇA #] Carrega clientes de Pós-Venda
+            loadPostSaleClients(); 
+
+            // --- LISTENERS GLOBAIS ---
+            
+            // Modal de Drag-and-Drop
+            modalConfirmBtn.addEventListener('click', executeMove);
+            modalCancelBtn.addEventListener('click', cancelMove);
+            modalBackdrop.addEventListener('click', cancelMove);
+
+            // Listeners do Menu de Contexto
+            window.addEventListener('click', hideContextMenu);
+            
+            // Ação para o botão "Editar"
+            contextMenuEdit.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); 
+                
+                const clientId = contextMenu.getAttribute('data-client-id');
+                if (clientId) {
+                    // [# MUDANÇA #] Redireciona para a página de edição de Pós-Venda
+                    console.log(`Redirecionando para editar o cliente de Pós-Venda: ${clientId}`);
+                    window.location.href = `/pos_venda/editar/${clientId}`; 
+                }
+                hideContextMenu();
+            });
+
+            // Ação para o botão "Histórico" (Exemplo)
+            contextMenuHistory.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); 
+                
+                const clientId = contextMenu.getAttribute('data-client-id');
+                if (clientId) {
+                    alert(`Abrir histórico do Cliente Pós-Venda ID: ${clientId}`);
+                }
+                hideContextMenu();
+            });
+        }
+
+        // Inicia o app
+        document.addEventListener('DOMContentLoaded', setupBoard);
+    </script>
+{% endblock %}

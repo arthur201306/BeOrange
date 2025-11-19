@@ -27,11 +27,11 @@ if not url or not key:
 
 # Configuração das Etapas do Funil
 STAGES_CONFIG: List[Dict[str, str]] = [
-    {'id': 'Aguardando retorno', 'title': 'Aguardando retorno', 'color': 'bg-blue-500'},
-    {'id': 'Em atendimento', 'title': 'Em atendimento', 'color': 'bg-yellow-500'},
-    {'id': 'Reunião', 'title': 'Reunião', 'color': 'bg-purple-500'},
-    {'id': 'Em proposta', 'title': 'Em proposta', 'color': 'bg-red-500'},
-    {'id': 'Finalizado', 'title': 'Finalizado', 'color': 'bg-green-500'}
+    {'id': 'aguardando retorno', 'title': 'Aguardando retorno', 'color': 'bg-blue-500'},
+    {'id': 'em atendimento', 'title': 'Em atendimento', 'color': 'bg-yellow-500'},
+    {'id': 'reunião', 'title': 'Reunião', 'color': 'bg-purple-500'},
+    {'id': 'em proposta', 'title': 'Em proposta', 'color': 'bg-red-500'},
+    {'id': 'finalizado', 'title': 'Finalizado', 'color': 'bg-green-500'}
 ]
 
 STAGES_CONFIG_POS_TRANSACTION: List[Dict[str, str]] = [
@@ -80,7 +80,6 @@ def get_layout_template() -> str:
     return 'layout_sidebar.html' if session.get('layout') == 'sidebar' else 'layout_topbar.html'
 
 # --- Rotas de Página (Views) ---
-
 @main_bp.route('/')
 def home():
     return redirect(url_for('main.kanban_board'))
@@ -95,7 +94,7 @@ def kanban_board():
     try:
         # 1. A "JUNÇÃO" (JOIN)
         response = supabase.table('clientes').select(
-            "id, nome_empresa, nome_contato, etapa, responsavel, created_at, areas(nome)"
+            "id, nome_empresa, nome_contato, etapa, responsavel(id, nome), created_at, areas(nome)"
         ).order('created_at', desc=True).execute()
         
         leads_raw = response.data
@@ -122,10 +121,7 @@ def kanban_board():
 
 @main_bp.route('/leads/novo', methods=['GET'])
 def create_lead_page():
-    """ 
-    Mostra a PÁGINA com o formulário para criar um novo lead. 
-    (VOCÊ AINDA NÃO TEM O TEMPLATE 'create_lead.html')
-    """
+    """Mostra a página com o formulário para criar um novo lead."""
     supabase = get_supabase()
     
     # Busca todas as áreas para o formulário
@@ -135,34 +131,41 @@ def create_lead_page():
         all_areas = all_areas_response.data
     except Exception as e:
         print(f"Erro ao buscar areas para novo lead: {e}")
-        
+
+    # --- BUSCA FUNCIONÁRIOS ---
+    all_employees = []
+    try:
+        employees_response = supabase.table('funcionarios').select("id, nome").execute()
+        all_employees = employees_response.data
+    except Exception as e:
+        print(f"Erro ao buscar funcionários: {e}")
+
     return render_template(
-        "create_lead.html", # Você precisa criar este arquivo
+        "create_lead.html",
         all_areas=all_areas,
         all_stages=STAGES_CONFIG,
+        all_employees=all_employees,  # ⬅️ envia a lista de funcionários
         base_template_name=get_layout_template(),
         page_title="Criar Novo Lead"
     )
 
 @main_bp.route('/leads/editar/<int:lead_id>')
 def edit_lead_page(lead_id):
-    """ Mostra a PÁGINA de edição para um lead específico. """
+    """Mostra a página de edição para um lead específico."""
     supabase = get_supabase()
     
     try:
         # Busca o lead específico E suas áreas
         response = supabase.table('clientes').select(
-            "*, areas(id, nome)"
+            "*, responsavel(id,nome), areas(id, nome)"
         ).eq('id', lead_id).single().execute()
         
         lead = response.data
-        print(lead['etapa'])
         if not lead:
             abort(404, "Lead não encontrado")
             
-        # Transforma as áreas para facilitar o preenchimento do formulário
+        # Transformar áreas existentes para preencher o formulário
         if lead.get('areas') and isinstance(lead['areas'], list):
-            # Salva os IDs das áreas que o cliente JÁ POSSUI
             lead['areas_atuais'] = [area['id'] for area in lead['areas']]
         else:
             lead['areas_atuais'] = []
@@ -170,163 +173,85 @@ def edit_lead_page(lead_id):
         # Busca TODAS as áreas possíveis para o formulário
         all_areas_response = supabase.table('areas').select("id, nome").execute()
         all_areas = all_areas_response.data
+
+        # --- BUSCA FUNCIONÁRIOS ---
+        all_employees = []
+        try:
+            employees_response = supabase.table('funcionarios').select("id, nome").execute()
+            all_employees = employees_response.data
+        except Exception as e:
+            print(f"Erro ao buscar funcionários: {e}")
             
     except Exception as e:
         abort(500, f"Erro ao buscar lead: {e}")
 
     return render_template(
-        "edit_lead.html", # Este template você já tem
+        "edit_lead.html",
         lead=lead,
         all_areas=all_areas,
-        all_stages=STAGES_CONFIG, # Passa as etapas para o form
+        all_stages=STAGES_CONFIG,
+        all_employees=all_employees,  # ⬅️ envia a lista de funcionários
         base_template_name=get_layout_template(),
         page_title=f"Editar Lead: {lead.get('nome_empresa')}"
     )
 
-@main_bp.route('/clientes')
-def client_list_page():
-    """ Renderiza uma lista tabular de todos os clientes. (ATUALIZADO PARA M:N) """
-    supabase = get_supabase()
-    clientes_final = []
-    error_msg = None
-    
-    try:
-        # 1. A "JUNÇÃO" (JOIN)
-        response = supabase.table('clientes').select(
-            "id, nome_empresa, nome_contato, email, telefone, responsavel, etapa, created_at, areas(nome)"
-        ).order('nome_empresa', desc=False).execute()
-        
-        clientes_raw = response.data
-
-        # 2. A TRANSFORMAÇÃO
-        for cliente in clientes_raw:
-            if cliente.get('areas') and isinstance(cliente['areas'], list):
-                cliente['areas'] = [area['nome'] for area in cliente['areas'] if 'nome' in area]
-            else:
-                cliente['areas'] = []
-            clientes_final.append(cliente)
-
-    except Exception as e:
-        error_msg = f"Erro ao buscar clientes: {e}"
-
-    return render_template(
-        "clientes_lista.html",
-        clientes=clientes_final, # Passa a lista formatada
-        error=error_msg,
-        base_template_name=get_layout_template()
-    )
-
-@main_bp.route('/atendimentos')
-def atendimentos_page():
-    """Renderiza a página de Atendimentos."""
-    return render_template(
-        "atendimentos.html", 
-        base_template_name=get_layout_template()
-    )
-
-@main_bp.route('/negocios')
-def negocios_page():
-    """Renderiza a página Central de Negócios (Dashboard)."""
-    supabase = get_supabase()
-    clientes = []
-    error_msg = None
-    
-    try:
-        response = supabase.table('clientes').select("etapa, responsavel, nome_empresa, created_at").order('created_at', desc=True).execute()
-        clientes = response.data
-    except Exception as e:
-        error_msg = f"Erro ao buscar dados do dashboard: {e}"
-
-    dashboard_data = {
-        'total_leads': 0,
-        'contagem_etapas': {},
-        'contagem_responsaveis': [],
-        'recentes_leads': []
-    }
-    if clientes:
-        dashboard_data['total_leads'] = len(clientes)
-        etapas_dos_clientes = [c.get('etapa') for c in clientes if c.get('etapa')]
-        dashboard_data['contagem_etapas'] = Counter(etapas_dos_clientes)
-        responsaveis_dos_clientes = [c.get('responsavel') for c in clientes if c.get('responsavel')]
-        dashboard_data['contagem_responsaveis'] = Counter(responsaveis_dos_clientes).most_common(5)
-        dashboard_data['recentes_leads'] = clientes[:5]
-
-    return render_template(
-        "negocios.html", 
-        base_template_name=get_layout_template(),
-        error=error_msg,
-        data=dashboard_data,
-        stages_config=STAGES_CONFIG 
-    )
-
-# --- Rotas de Controle ---
-
-@main_bp.route('/set-layout/<layout_name>')
-def set_layout(layout_name):
-    """ Salva a preferência de layout do usuário na sessão. """
-    if layout_name in ['topbar', 'sidebar']:
-        session['layout'] = layout_name
-    return redirect(request.referrer or url_for('main.home'))
-
-# --- Rotas de API ---
-
 @main_bp.route('/api/leads/create', methods=['POST'])
 def create_lead_action():
-    """ API para criar um novo lead. (ATUALIZADO PARA M:N) """
+    """ API para criar um novo lead com áreas e funcionário responsável. """
     supabase = get_supabase()
     data = request.get_json()
     if not data:
         return jsonify({'success': False, 'error': 'Nenhum dado JSON recebido.'}), 400
 
-    # Pega os NOMES das áreas (ex: ["Vendas", "TI"])
-    area_names = data.get('areas', []) 
+    area_names = data.get('areas', [])
+    responsavel_id = data.get('responsavel')
 
-    # 1. Prepara dados do CLIENTE
-    new_lead_data = {
-        'nome_contato': data.get('nome_contato'),
-        'nome_empresa': data.get('nome_empresa'),
-        'email': data.get('email'),
-        'telefone': data.get('telefone'),
-        'responsavel': data.get('responsavel'),
-        'etapa': data.get('etapa', 'Aguardando retorno'),
-    }
-    
     try:
-        # 2. Insere o CLIENTE
+        # --- Valida o funcionário ---
+        if responsavel_id:
+            resp_func = supabase.table('funcionarios').select('id, nome').eq('id', responsavel_id).single().execute()
+            if not resp_func.data:
+                return jsonify({'success': False, 'error': 'Funcionário responsável não encontrado.'}), 400
+            responsavel_nome = resp_func.data['nome']
+        else:
+            responsavel_nome = None
+
+        # --- Prepara dados do cliente ---
+        new_lead_data = {
+            'nome_contato': data.get('nome_contato'),
+            'nome_empresa': data.get('nome_empresa'),
+            'email': data.get('email'),
+            'telefone': data.get('telefone'),
+            'responsavel': responsavel_id,
+            'etapa': data.get('etapa', 'Aguardando retorno'),
+        }
+
+        # --- Insere o cliente ---
         response_cliente = supabase.table('clientes').insert(new_lead_data).execute()
-        
         if not response_cliente.data:
             return jsonify({'success': False, 'error': 'Falha ao criar cliente.'}), 500
-            
+
         new_lead = response_cliente.data[0]
         new_lead_id = new_lead['id']
-        
-        # 3. Processa as ÁREAS
+
+        # --- Processa as Áreas (M:N) ---
         if area_names:
-            # 3a. Busca os IDs das áreas na tabela 'areas'
-            response_areas = supabase.table('areas') \
-                                     .select('id, nome') \
-                                     .in_('nome', area_names) \
-                                     .execute()
-            
+            response_areas = supabase.table('areas').select('id, nome').in_('nome', area_names).execute()
             area_id_map = {area['nome']: area['id'] for area in response_areas.data}
 
-            # 3b. Prepara os dados para a tabela de JUNÇÃO
-            junction_data_to_insert = []
-            for name in area_names:
-                if name in area_id_map:
-                    junction_data_to_insert.append({
-                        'cliente_id': new_lead_id,
-                        'area_id': area_id_map[name]
-                    })
-            
-            # 3c. Insere as relações na tabela 'clientes_areas'
+            junction_data_to_insert = [
+                {'cliente_id': new_lead_id, 'area_id': area_id_map[name]}
+                for name in area_names if name in area_id_map
+            ]
+
             if junction_data_to_insert:
                 supabase.table('clientes_areas').insert(junction_data_to_insert).execute()
 
-        new_lead['areas'] = area_names 
+        new_lead['areas'] = area_names
+        new_lead['responsavel_nome'] = responsavel_nome  # retorna também o nome do funcionário
+
         return jsonify({'success': True, 'lead': new_lead}), 201
-            
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -356,7 +281,6 @@ def update_lead_stage():
         print(f"Erro ao atualizar lead {lead_id}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# [# CORRIGIDO #] - Esta é a rota que estava duplicada. Agora só há uma.
 @main_bp.route('/api/leads/update/<int:lead_id>', methods=['POST'])
 def update_lead_action(lead_id):
     """ API para atualizar um lead existente (usado pela página de edição). """
@@ -398,6 +322,193 @@ def update_lead_action(lead_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
     
+@main_bp.route('/move_to_post_sale', methods=['POST'])
+def move_to_post_sale():
+    print("Recebida requisição para mover lead para Pós-Venda")
+    data = request.get_json()
+    lead_id = data.get('lead_id')
+    supabase = get_supabase()
+    
+    if not lead_id:
+        return jsonify({"success": False, "error": "ID do lead não fornecido"}), 400
+
+    try:
+        # 1. BUSCAR lead original (Tabela: clientes)
+        # Selecionamos todas as colunas que coincidem com clientes_posvenda
+        lead_response = supabase.table('clientes').select('nome_empresa, nome_contato, email, telefone, responsavel, created_at, etapa').eq('id', lead_id).single().execute()
+        lead_data = lead_response.data
+        
+        if not lead_data:
+             return jsonify({"success": False, "error": "Lead não encontrado para transição"}), 404
+
+        # 2. PREPARAR DADOS para Inserção (Tabela: clientes_posvenda)
+        
+        # Como as colunas são as mesmas (etapa, nome_empresa, etc.), 
+        # podemos reutilizar a maioria dos dados e apenas ajustar o essencial.
+        new_client_data = {
+            'nome_empresa': lead_data.get('nome_empresa'),
+            'nome_contato': lead_data.get('nome_contato'),
+            'email': lead_data.get('email'),
+            'telefone': lead_data.get('telefone'),
+            'responsavel': lead_data.get('responsavel'), # Assumindo que este é o ID do responsável
+            
+            # ATENÇÃO: Define a primeira etapa do Pós-Venda
+            'etapa': '1 - Setup Inicial', 
+            
+            # Opcional: Manter o created_at original ou adicionar uma data_transicao
+            # 'created_at': lead_data.get('created_at') 
+        }
+        
+        # 3. INSERIR na tabela clientes_posvenda
+        result = supabase.table('clientes_posvenda').insert(new_client_data).execute()
+        new_client_id = result.data[0]['id'] 
+        
+        # 4. AÇÃO NO LEAD ORIGINAL (Tabela: clientes)
+        # Apenas atualiza a etapa para "Arquivado" para que o backend possa filtrar futuramente.
+        # Por enquanto, o front-end já o remove.
+        supabase.table('clientes').update({'etapa': 'Venda Concluída - ARQUIVADO'}).eq('id', lead_id).execute()
+
+
+        # Não se preocupe com o filtro do /leads por enquanto, apenas garanta que o cliente
+        # saiba que o lead não está mais no Kanban ativo.
+        
+        return jsonify({"success": True, "new_client_id": new_client_id})
+
+    except Exception as e:
+        print(f"Erro ao mover para Pós-Venda: {e}")
+        return jsonify({"success": False, "error": f"Falha na transição: {str(e)}"}), 500
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------- #
+@main_bp.route('/posvenda')
+def kanban_board_posvenda():
+    supabase = get_supabase()
+    leads_final = []
+    error_msg = None
+    
+    try:
+        # 1. CORREÇÃO: Usar o nome da coluna correto da tabela 'clientes_posvenda'
+        response = supabase.table('clientes_posvenda').select(
+            "id, nome_empresa, nome_contato, etapa_posvenda, responsavel(id, nome), created_at, areas(nome)"
+        ).order('created_at', desc=True).execute()
+        
+        leads_raw = response.data
+
+        # 2. TRANSFORMAÇÃO E RENOMEAÇÃO para compatibilidade com o JS
+        for lead in leads_raw:
+            
+            # Renomeia 'etapa_posvenda' para 'etapa' no objeto final para o Kanban JS
+            if 'etapa_posvenda' in lead:
+                # Usa .pop() para mover o valor e remover a chave antiga
+                lead['etapa'] = lead.pop('etapa_posvenda')
+            
+            # Formatação das áreas (como já estava)
+            if lead.get('areas') and isinstance(lead['areas'], list):
+                lead['areas'] = [area['nome'] for area in lead['areas'] if 'nome' in area]
+            else:
+                lead['areas'] = []
+            
+            leads_final.append(lead)
+            
+    except Exception as e:
+        error_msg = f"Erro ao buscar clientes de Pós-Venda: {e}"
+        leads_final = [] 
+
+    # 3. PASSAGEM SEGURA de variáveis de contexto
+    return render_template(
+        "kanban_crm_pos_venda.html", 
+        all_leads_json=leads_final, 
+        # Garante que as constantes globais sejam passadas, usando um valor padrão se não existirem
+        all_stages_json=globals().get('STAGES_CONFIG_POS_TRANSACTION', []),
+        areas_colors_json=globals().get('AREAS_COLOR_MAP', {}), 
+        error=error_msg,
+        base_template_name=globals().get('get_layout_template', lambda: "layout_sidebar.html")()
+    )
+# ----------------------------------------------------------------------------------------------------------------------------------------------------- #
+
+@main_bp.route('/clientes')
+def client_list_page():
+    """ Renderiza uma lista tabular de todos os clientes. (ATUALIZADO PARA M:N) """
+    supabase = get_supabase()
+    clientes_final = []
+    error_msg = None
+    
+    try:
+        # 1. A "JUNÇÃO" (JOIN)
+        response = supabase.table('clientes').select(
+            "id, nome_empresa, nome_contato, email, telefone, responsavel, etapa, created_at, areas(nome)"
+        ).order('nome_empresa', desc=False).execute()
+        
+        clientes_raw = response.data
+
+        # 2. A TRANSFORMAÇÃO
+        for cliente in clientes_raw:
+            if cliente.get('areas') and isinstance(cliente['areas'], list):
+                cliente['areas'] = [area['nome'] for area in cliente['areas'] if 'nome' in area]
+            else:
+                cliente['areas'] = []
+            clientes_final.append(cliente)
+
+    except Exception as e:
+        error_msg = f"Erro ao buscar clientes: {e}"
+
+    return render_template(
+        "clientes_lista.html",
+        clientes=clientes_final, # Passa a lista formatada
+        error=error_msg,
+        base_template_name=get_layout_template()
+    )
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------- #
+
+
+@main_bp.route('/negocios')
+def negocios_page():
+    """Renderiza a página Central de Negócios (Dashboard)."""
+    supabase = get_supabase()
+    clientes = []
+    error_msg = None
+    
+    try:
+        response = supabase.table('clientes').select("etapa, responsavel, nome_empresa, created_at").order('created_at', desc=True).execute()
+        clientes = response.data
+    except Exception as e:
+        error_msg = f"Erro ao buscar dados do dashboard: {e}"
+
+    dashboard_data = {
+        'total_leads': 0,
+        'contagem_etapas': {},
+        'contagem_responsaveis': [],
+        'recentes_leads': []
+    }
+    if clientes:
+        dashboard_data['total_leads'] = len(clientes)
+        etapas_dos_clientes = [c.get('etapa') for c in clientes if c.get('etapa')]
+        dashboard_data['contagem_etapas'] = Counter(etapas_dos_clientes)
+        responsaveis_dos_clientes = [c.get('responsavel') for c in clientes if c.get('responsavel')]
+        dashboard_data['contagem_responsaveis'] = Counter(responsaveis_dos_clientes).most_common(5)
+        dashboard_data['recentes_leads'] = clientes[:5]
+
+    return render_template(
+        "negocios.html", 
+        base_template_name=get_layout_template(),
+        error=error_msg,
+        data=dashboard_data,
+        stages_config=STAGES_CONFIG 
+    )
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------- #
+
+
+# --- Rotas de Controle ---
+
+@main_bp.route('/set-layout/<layout_name>')
+def set_layout(layout_name):
+    """ Salva a preferência de layout do usuário na sessão. """
+    if layout_name in ['topbar', 'sidebar']:
+        session['layout'] = layout_name
+    return redirect(request.referrer or url_for('main.home'))
+
+# --- Rotas de API ---
 @main_bp.route('/areas')
 def list_areas_page():
     """ Renderiza a página para ver e criar novas Áreas. """

@@ -34,7 +34,16 @@
             
             <div>
                 <label for="lead_responsavel" class="block text-sm font-medium text-gray-700">Responsável (Owner)</label>
-                <input type="text" id="lead_responsavel" value="{{ lead.responsavel or '' }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <!-- <input type="text" id="lead_responsavel" value="{{ lead.responsavel.nome or '' }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"> -->
+                <select name="responsavel" id="responsavel" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <option value="">Selecione um funcionário</option>
+                    {% for employee in all_employees %}
+                        <option value="{{ employee.id }}"
+                            {% if lead.responsavel.id == employee.id %}selected{% endif %}>
+                            {{ employee.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
 
 
@@ -79,7 +88,7 @@
             const nome_contato = document.getElementById('lead_nome_contato').value;
             const email = document.getElementById('lead_email').value;
             const telefone = document.getElementById('lead_telefone').value;
-            const responsavel = document.getElementById('lead_responsavel').value;
+            const responsavel = document.getElementById('responsavel').value;
             //const etapa = document.getElementById('lead_etapa').value;
 
             // Coleta dos IDs das áreas selecionadas
