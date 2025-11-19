@@ -34,6 +34,16 @@ STAGES_CONFIG: List[Dict[str, str]] = [
     {'id': 'Finalizado', 'title': 'Finalizado', 'color': 'bg-green-500'}
 ]
 
+STAGES_CONFIG_POS_TRANSACTION: List[Dict[str, str]] = [
+    {'id': 'Entrega Realizada', 'title': 'Entrega Realizada', 'color': 'bg-blue-500'},
+    {'id': 'Aguardando Feedback', 'title': 'Aguardando Feedback', 'color': 'bg-yellow-500'},
+    {'id': 'Feedback Recebido', 'title': 'Feedback Recebido', 'color': 'bg-purple-500'},
+    {'id': 'Ações Corretivas/Suporte', 'title': 'Ações Corretivas/Suporte', 'color': 'bg-red-500'},
+    {'id': 'Possível Upsell', 'title': 'Possível Upsell', 'color': 'bg-orange-500'},
+    {'id': 'Finalizado pós-venda', 'title': 'Finalizado pós-venda', 'color': 'bg-green-500'}
+]
+
+
 # Mapa de Cores das Áreas (Tags)
 AREAS_COLOR_MAP: Dict[str, str] = {
     'TI': 'text-white bg-indigo-500',
@@ -41,8 +51,7 @@ AREAS_COLOR_MAP: Dict[str, str] = {
     'Vendas': 'text-white bg-orange-500',
     'Financeiro': 'text-white bg-cyan-500',
     'RH': 'text-white bg-pink-500',
-    'default': 'text-white bg-gray-500',
-    'TESTE': 'text-white bg-blue-500'
+    'default': 'text-white bg-gray-500'
 }
 
 # --- Helpers de Blueprint ---
