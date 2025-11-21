@@ -38,7 +38,7 @@ STAGES_CONFIG_POS_TRANSACTION: List[Dict[str, str]] = [
     {'id': 'Entrega Realizada', 'title': 'Entrega Realizada', 'color': 'bg-blue-500'},
     {'id': 'Aguardando Feedback', 'title': 'Aguardando Feedback', 'color': 'bg-yellow-500'},
     {'id': 'Feedback Recebido', 'title': 'Feedback Recebido', 'color': 'bg-purple-500'},
-    {'id': 'Ações Corretivas/Suporte', 'title': 'Ações Corretivas/Suporte', 'color': 'bg-red-500'},
+    {'id': 'Suporte', 'title': 'Suporte', 'color': 'bg-red-500'},
     {'id': 'Possível Upsell', 'title': 'Possível Upsell', 'color': 'bg-orange-500'},
     {'id': 'Finalizado pós-venda', 'title': 'Finalizado pós-venda', 'color': 'bg-green-500'}
 ]
@@ -55,6 +55,15 @@ AREAS_COLOR_MAP: Dict[str, str] = {
 }
 
 # --- Helpers de Blueprint ---
+def get_employees_map(supabase: Client) -> Dict[int, str]:
+    """ Busca todos os funcionários e retorna um mapa {id: nome} """
+    try:
+        response = supabase.table('funcionarios').select("id, nome").execute()
+        return {emp['id']: emp['nome'] for emp in response.data}
+    except Exception as e:
+        print(f"Erro ao buscar mapa de funcionários: {e}")
+        return {}
+
 
 def get_supabase() -> Client:
     """
@@ -336,6 +345,7 @@ def move_to_post_sale():
         # 1. BUSCAR lead original (Tabela: clientes)
         # Selecionamos todas as colunas que coincidem com clientes_posvenda
         lead_response = supabase.table('clientes').select('nome_empresa, nome_contato, email, telefone, responsavel, created_at, etapa').eq('id', lead_id).single().execute()
+        area_response = supabase.table('clientes_areas').select('area_id').eq('cliente_id', lead_id).execute()
         lead_data = lead_response.data
         
         if not lead_data:
@@ -353,11 +363,12 @@ def move_to_post_sale():
             'responsavel': lead_data.get('responsavel'), # Assumindo que este é o ID do responsável
             
             # ATENÇÃO: Define a primeira etapa do Pós-Venda
-            'etapa': '1 - Setup Inicial', 
+            'etapa': 'Entrega Realizada', 
             
             # Opcional: Manter o created_at original ou adicionar uma data_transicao
             # 'created_at': lead_data.get('created_at') 
         }
+
         
         # 3. INSERIR na tabela clientes_posvenda
         result = supabase.table('clientes_posvenda').insert(new_client_data).execute()
@@ -368,6 +379,16 @@ def move_to_post_sale():
         # Por enquanto, o front-end já o remove.
         supabase.table('clientes').update({'etapa': 'Venda Concluída - ARQUIVADO'}).eq('id', lead_id).execute()
 
+        areas_to_insert = [
+            {
+                'cliente_posvenda_id': new_client_id,
+                'area_id': area['area_id']
+            }
+            # Percorre os IDs de área do lead original (area_response.data)
+            for area in area_response.data 
+        ]
+
+        supabase.table('clientes_posvenda_areas').insert(areas_to_insert).execute()
 
         # Não se preocupe com o filtro do /leads por enquanto, apenas garanta que o cliente
         # saiba que o lead não está mais no Kanban ativo.
@@ -388,7 +409,7 @@ def kanban_board_posvenda():
     try:
         # 1. CORREÇÃO: Usar o nome da coluna correto da tabela 'clientes_posvenda'
         response = supabase.table('clientes_posvenda').select(
-            "id, nome_empresa, nome_contato, etapa_posvenda, responsavel(id, nome), created_at, areas(nome)"
+            "id, nome_empresa, nome_contato, etapa, responsavel(id, nome), created_at, areas(nome)"
         ).order('created_at', desc=True).execute()
         
         leads_raw = response.data
@@ -396,10 +417,10 @@ def kanban_board_posvenda():
         # 2. TRANSFORMAÇÃO E RENOMEAÇÃO para compatibilidade com o JS
         for lead in leads_raw:
             
-            # Renomeia 'etapa_posvenda' para 'etapa' no objeto final para o Kanban JS
-            if 'etapa_posvenda' in lead:
+            # Renomeia 'etapa' para 'etapa' no objeto final para o Kanban JS
+            if 'etapa' in lead:
                 # Usa .pop() para mover o valor e remover a chave antiga
-                lead['etapa'] = lead.pop('etapa_posvenda')
+                lead['etapa'] = lead.pop('etapa')
             
             # Formatação das áreas (como já estava)
             if lead.get('areas') and isinstance(lead['areas'], list):
@@ -423,29 +444,178 @@ def kanban_board_posvenda():
         error=error_msg,
         base_template_name=globals().get('get_layout_template', lambda: "layout_sidebar.html")()
     )
+
+@main_bp.route('/api/posvenda/update_stage', methods=['POST'])
+def update_post_sale_stage():
+    supabase = get_supabase()
+    data = request.get_json()
+    lead_id = data.get('client_id')
+    new_stage = data.get('new_stage')
+
+    print(f"Recebida requisição para atualizar etapa Pós-Venda {data} ")
+    print(f"Atualizando lead Pós-Venda {lead_id} para etapa {new_stage}")
+    
+    if not lead_id or not new_stage:
+        return jsonify({'success': False, 'error': 'ID do lead ou nova etapa ausentes'}), 400
+        
+    try:
+        response = supabase.table('clientes_posvenda') \
+            .update({'etapa': new_stage}) \
+            .eq('id', lead_id) \
+            .execute()
+            
+        if response.data:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Nenhum dado atualizado (verifique o ID e RLS)'}), 404
+
+    except Exception as e:
+        print(f"Erro ao atualizar lead {lead_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@main_bp.route('/pos_venda/editar/<int:lead_id>')
+def edit_posvenda_page(lead_id):
+    """Mostra a página de edição para um lead específico."""
+    supabase = get_supabase()
+    
+    try:
+        # Busca o lead específico E suas áreas
+        response = supabase.table('clientes_posvenda').select(
+            "*, responsavel(id,nome), areas(id, nome)"
+        ).eq('id', lead_id).single().execute()
+        
+        lead = response.data
+        if not lead:
+            abort(404, "Lead não encontrado")
+            
+        # Transformar áreas existentes para preencher o formulário
+        if lead.get('areas') and isinstance(lead['areas'], list):
+            lead['areas_atuais'] = [area['id'] for area in lead['areas']]
+        else:
+            lead['areas_atuais'] = []
+
+        # Busca TODAS as áreas possíveis para o formulário
+        all_areas_response = supabase.table('areas').select("id, nome").execute()
+        all_areas = all_areas_response.data
+
+        # --- BUSCA FUNCIONÁRIOS ---
+        all_employees = []
+        try:
+            employees_response = supabase.table('funcionarios').select("id, nome").execute()
+            all_employees = employees_response.data
+        except Exception as e:
+            print(f"Erro ao buscar funcionários: {e}")
+            
+    except Exception as e:
+        abort(500, f"Erro ao buscar lead: {e}")
+
+    return render_template(
+        "edit_lead_posvenda.html",
+        lead=lead,
+        all_areas=all_areas,
+        all_stages=STAGES_CONFIG_POS_TRANSACTION,
+        all_employees=all_employees,  # ⬅️ envia a lista de funcionários
+        base_template_name=get_layout_template(),
+        page_title=f"Editar Lead: {lead.get('nome_empresa')}"
+    )
+
+@main_bp.route('/api/posvenda/update/<int:lead_id>', methods=['POST'])
+def update_posvenda_action(lead_id):
+    """ API para atualizar um lead existente (usado pela página de edição). """
+    supabase = get_supabase()
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Nenhum dado JSON recebido.'}), 400
+
+    # Pega os IDs das áreas (ex: [1, 3])
+    area_ids = data.get('areas', [])
+
+    # 1. Prepara dados do CLIENTE
+    lead_update_data = {
+        'nome_contato': data.get('nome_contato'),
+        'nome_empresa': data.get('nome_empresa'),
+        'email': data.get('email'),
+        'telefone': data.get('telefone'),
+        'responsavel': data.get('responsavel'),
+        'etapa': data.get('etapa'),
+    }
+
+    try:
+        # 2. Atualiza os dados principais na tabela 'clientes'
+        supabase.table('clientes_posvenda').update(lead_update_data).eq('id', lead_id).execute()
+        
+        # 3. Sincroniza as ÁREAS (a parte M:N)
+        # 3a. Deleta TODAS as associações antigas deste cliente
+        supabase.table('clientes_posvenda_areas').delete().eq('cliente_id', lead_id).execute()
+
+        # 3b. Insere as novas associações (se houver)
+        if area_ids:
+            junction_data_to_insert = [
+                {'cliente_id': lead_id, 'area_id': area_id} for area_id in area_ids
+            ]
+            supabase.table('clientes_posvenda_areas').insert(junction_data_to_insert).execute()
+
+        return jsonify({'success': True}), 200
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------- #
 
 @main_bp.route('/clientes')
 def client_list_page():
-    """ Renderiza uma lista tabular de todos os clientes. (ATUALIZADO PARA M:N) """
+    """ 
+    Renderiza uma lista tabular unificada de Leads (clientes) e Clientes de Pós-Venda.
+    """
     supabase = get_supabase()
     clientes_final = []
     error_msg = None
     
+    # 1. Obter mapa de funcionários (para mostrar o nome ao invés do ID)
+    employee_map = get_employees_map(supabase)
+
     try:
-        # 1. A "JUNÇÃO" (JOIN)
-        response = supabase.table('clientes').select(
+        # --- BUSCA 1: LEADS (Tabela 'clientes') ---
+        # Note que aqui não podemos usar responsavel(id, nome), por isso usamos o employee_map
+        response_leads = supabase.table('clientes').select(
+            "id, nome_empresa, nome_contato, email, telefone, responsavel, etapa, created_at, areas(nome)"
+        ).order('nome_empresa', desc=False).neq('etapa', 'Venda Concluída - ARQUIVADO').execute()
+        
+        leads_raw = response_leads.data
+
+        # --- BUSCA 2: CLIENTES PÓS-VENDA (Tabela 'clientes_posvenda') ---
+        response_posvenda = supabase.table('clientes_posvenda').select(
             "id, nome_empresa, nome_contato, email, telefone, responsavel, etapa, created_at, areas(nome)"
         ).order('nome_empresa', desc=False).execute()
         
-        clientes_raw = response.data
+        posvenda_raw = response_posvenda.data
 
-        # 2. A TRANSFORMAÇÃO
-        for cliente in clientes_raw:
+        # 2. TRANSFORMAÇÃO E UNIFICAÇÃO
+        clientes_unificados_raw = []
+        
+        # Processa Leads
+        for cliente in leads_raw:
+            cliente['tipo'] = 'Lead'
+            clientes_unificados_raw.append(cliente)
+            
+        # Processa Pós-Venda
+        for cliente in posvenda_raw:
+            cliente['tipo'] = 'Pós-Venda'
+            clientes_unificados_raw.append(cliente)
+            
+        # Formata os dados unificados
+        for cliente in clientes_unificados_raw:
+            # Formata áreas
             if cliente.get('areas') and isinstance(cliente['areas'], list):
                 cliente['areas'] = [area['nome'] for area in cliente['areas'] if 'nome' in area]
             else:
                 cliente['areas'] = []
+            
+            # Adiciona o nome do responsável
+            responsavel_id = cliente.get('responsavel')
+            cliente['responsavel_nome'] = employee_map.get(responsavel_id) if responsavel_id else 'N/A'
+
             clientes_final.append(cliente)
 
     except Exception as e:
@@ -453,49 +623,211 @@ def client_list_page():
 
     return render_template(
         "clientes_lista.html",
-        clientes=clientes_final, # Passa a lista formatada
+        clientes=clientes_final, 
         error=error_msg,
+        # É ESSENCIAL passar o mapa de cores para o template formatar as tags
+        areas_colors_json=globals().get('AREAS_COLOR_MAP', {}),
         base_template_name=get_layout_template()
     )
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------- #
-
+# Seu arquivo main/routes.py
 
 @main_bp.route('/negocios')
 def negocios_page():
-    """Renderiza a página Central de Negócios (Dashboard)."""
+    """Renderiza a página Central de Negócios (Dashboard) com métricas de Leads e Pós-Venda."""
     supabase = get_supabase()
-    clientes = []
+    clientes_unificados = []
     error_msg = None
     
+    # 1. BUSCAR MAPA DE FUNCIONÁRIOS
+    # Necessário para converter o ID do responsável para o nome (na lista de recentes e contagem)
+    employee_map = get_employees_map(supabase)
+
     try:
-        response = supabase.table('clientes').select("etapa, responsavel, nome_empresa, created_at").order('created_at', desc=True).execute()
-        clientes = response.data
+        # --- BUSCA 1: LEADS (clientes - Pré-Venda) ---
+        # Busca leads ativos (excluindo os arquivados) com os campos mínimos necessários
+        response_leads = supabase.table('clientes').select(
+            "id, nome_empresa, responsavel, etapa, created_at"
+        ).order('created_at', desc=True).neq('etapa', 'Venda Concluída - ARQUIVADO').execute()
+        
+        leads_raw = response_leads.data
+        
+        # --- BUSCA 2: CLIENTES PÓS-VENDA (clientes_posvenda) ---
+        # Busca clientes de pós-venda com os campos mínimos necessários
+        response_posvenda = supabase.table('clientes_posvenda').select(
+            "id, nome_empresa, responsavel, etapa, created_at"
+        ).order('created_at', desc=True).execute()
+
+        posvenda_raw = response_posvenda.data
+
+        # 2. UNIFICAÇÃO, TIPO E Mapeamento de ID
+        
+        # Processa Leads (Pré-Venda)
+        for lead in leads_raw:
+            lead['tipo'] = 'Lead'
+            # Mantém o 'id' padrão
+            clientes_unificados.append(lead)
+            
+        # Processa Clientes (Pós-Venda)
+        for client in posvenda_raw:
+            client['tipo'] = 'Pós-Venda'
+            # Renomeia o ID para 'posvenda_id' para evitar conflito no template
+            client['posvenda_id'] = client['id'] 
+            del client['id'] # Remove o 'id' original para evitar erros
+            clientes_unificados.append(client)
+        
+        # 2.5. ORDENAÇÃO POR DATA DE CRIAÇÃO (Mais recente primeiro)
+        # Essencial para garantir que os 'recentes_leads' sejam os mais atuais
+        clientes_unificados.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
     except Exception as e:
         error_msg = f"Erro ao buscar dados do dashboard: {e}"
+        clientes_unificados = [] 
+
+    # --- INICIALIZAÇÃO E CÁLCULOS ---
+    dashboard_data = {
+        'total_leads': len(clientes_unificados),
+        'contagem_etapas': Counter(),
+        'contagem_responsaveis': [],
+        'recentes_leads': [],
+    }
+    
+    if clientes_unificados:
+        # 3. CONTAGEM DOS STAGES (ETAPAS)
+        
+        # Agrega TODAS as etapas (Vendas e Pós-Venda) em um único Counter
+        etapas_dos_clientes = [c.get('etapa') for c in clientes_unificados if c.get('etapa')]
+        dashboard_data['contagem_etapas'] = Counter(etapas_dos_clientes)
+        
+        # Agrega por Responsável
+        responsaveis_dos_clientes_id = [c.get('responsavel') for c in clientes_unificados if c.get('responsavel')]
+        contagem_id = Counter(responsaveis_dos_clientes_id).most_common(5)
+        contagem_nome = []
+        for responsavel_id, contagem in contagem_id:
+            nome = employee_map.get(responsavel_id, f"ID {responsavel_id} Desconhecido")
+            contagem_nome.append((nome, contagem))
+            
+        dashboard_data['contagem_responsaveis'] = contagem_nome
+        
+        # 4. Formatação Final dos Leads Recentes (Top 5 da lista já ordenada)
+        recentes_formatados = []
+        for lead in clientes_unificados[:5]: 
+            responsavel_id = lead.get('responsavel')
+            nome = employee_map.get(responsavel_id, 'N/A')
+            lead['responsavel_nome'] = nome
+            recentes_formatados.append(lead)
+            
+        dashboard_data['recentes_leads'] = recentes_formatados
+
+    # 5. RENDERIZAÇÃO
+    return render_template(
+        "negocios.html", 
+        base_template_name=get_layout_template(),
+        error=error_msg,
+        data=dashboard_data,
+        # Unifica as configurações de etapas (Pré e Pós-Venda) em um único dicionário para o Jinja
+        stages_config={
+            **{s['id']: s for s in STAGES_CONFIG}, 
+            **{s['id']: s for s in STAGES_CONFIG_POS_TRANSACTION}
+        } 
+    )
+    """Renderiza a página Central de Negócios (Dashboard)."""
+    supabase = get_supabase()
+    clientes_unificados = []
+    error_msg = None
+    
+    # 1. BUSCAR MAPA DE FUNCIONÁRIOS
+    employee_map = get_employees_map(supabase)
+
+    try:
+        # --- BUSCA 1: LEADS (clientes) ---
+        # response_leads = supabase.table('clientes').select(
+        #     "id, etapa, responsavel, nome_empresa, created_at"
+        # ).order('created_at', desc=True).neq('etapa', 'Venda Concluída - ARQUIVADO').execute()
+
+        response_leads = supabase.table('clientes').select(
+            "id, nome_empresa, nome_contato, email, telefone, responsavel, etapa, created_at, areas(nome)"
+        ).order('nome_empresa', desc=False).neq('etapa', 'Venda Concluída - ARQUIVADO').execute()
+        
+        
+        leads_raw = response_leads.data
+        
+        # --- BUSCA 2: CLIENTES PÓS-VENDA (clientes_posvenda) ---
+        response_posvenda = supabase.table('clientes_posvenda').select(
+            "id, nome_empresa, nome_contato, email, telefone, responsavel, etapa, created_at, areas(nome)"
+        ).order('nome_empresa', desc=False).execute()
+
+        posvenda_raw = response_posvenda.data
+
+        # 2. UNIFICAÇÃO, TIPO E Mapeamento de ID
+        
+        # Processa Leads (Pré-Venda)
+        for lead in leads_raw:
+            lead['tipo'] = 'Lead'
+            # Já tem o 'id' padrão
+            clientes_unificados.append(lead)
+            
+        # Processa Clientes (Pós-Venda)
+        for client in posvenda_raw:
+            client['tipo'] = 'Pós-Venda'
+            # Renomeia o ID para 'posvenda_id' para evitar conflito no template,
+            # e mantém o 'id' original APENAS para contagem, mas isso é mais seguro.
+            client['posvenda_id'] = client['id'] # Salva o ID real de pós-venda
+            del client['id'] # Remove o 'id' para evitar o erro original no template.
+            clientes_unificados.append(client)
+        
+    except Exception as e:
+        error_msg = f"Erro ao buscar dados do dashboard: {e}"
+        # Se houver erro, garante que a lista esteja vazia para não travar o loop
+        clientes_unificados = [] 
 
     dashboard_data = {
         'total_leads': 0,
         'contagem_etapas': {},
         'contagem_responsaveis': [],
-        'recentes_leads': []
+        # Ordenamos por data (Recentes) após unificação (a busca já fez o order by)
+        'recentes_leads': clientes_unificados[:5] 
     }
-    if clientes:
-        dashboard_data['total_leads'] = len(clientes)
-        etapas_dos_clientes = [c.get('etapa') for c in clientes if c.get('etapa')]
+    
+    if clientes_unificados:
+        # 3. CONTAGENS E AGRUPAMENTOS
+        
+        dashboard_data['total_leads'] = len(clientes_unificados)
+        
+        # Agrega por Etapa (incluindo Pós-Venda)
+        etapas_dos_clientes = [c.get('etapa') for c in clientes_unificados if c.get('etapa')]
         dashboard_data['contagem_etapas'] = Counter(etapas_dos_clientes)
-        responsaveis_dos_clientes = [c.get('responsavel') for c in clientes if c.get('responsavel')]
-        dashboard_data['contagem_responsaveis'] = Counter(responsaveis_dos_clientes).most_common(5)
-        dashboard_data['recentes_leads'] = clientes[:5]
+        
+        # Agrega por Responsável
+        responsaveis_dos_clientes_id = [c.get('responsavel') for c in clientes_unificados if c.get('responsavel')]
+        
+        contagem_id = Counter(responsaveis_dos_clientes_id).most_common(5)
+        contagem_nome = []
+        for responsavel_id, contagem in contagem_id:
+            nome = employee_map.get(responsavel_id, f"ID {responsavel_id} Desconhecido")
+            contagem_nome.append((nome, contagem))
+            
+        dashboard_data['contagem_responsaveis'] = contagem_nome
+        
+        # 4. Formatação Final dos Leads Recentes
+        recentes_formatados = []
+        for lead in dashboard_data['recentes_leads']:
+            responsavel_id = lead.get('responsavel')
+            nome = employee_map.get(responsavel_id, 'N/A')
+            lead['responsavel_nome'] = nome
+            recentes_formatados.append(lead)
+        
+        dashboard_data['recentes_leads'] = recentes_formatados
+
 
     return render_template(
         "negocios.html", 
         base_template_name=get_layout_template(),
         error=error_msg,
         data=dashboard_data,
-        stages_config=STAGES_CONFIG 
+        stages_config={**{s['id']: s for s in STAGES_CONFIG}, **{s['id']: s for s in STAGES_CONFIG_POS_TRANSACTION}} 
     )
-
 # ----------------------------------------------------------------------------------------------------------------------------------------------------- #
 
 

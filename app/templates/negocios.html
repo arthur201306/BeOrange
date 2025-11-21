@@ -1,81 +1,127 @@
 {% extends "layout_sidebar.html" %}
 
-{% block page_title %}
-Central de Negócios
-{% endblock %}
+{% block head_extra %}
+    <title>Negócios - Dashboard | BeOrange CRM</title>
+    {% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
 
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">
-        Dashboard de Negócios
-    </h1>
-
-    {% if error %}
-    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-        <strong class="font-bold">Erro!</strong>
-        <span class="block sm:inline">{{ error }}</span>
-    </div>
-    {% endif %}
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="p-6">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Central de Negócios 🚀</h1>
         
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h2 class="text-sm font-medium text-gray-500">Total de Leads</h2>
-            <p class="text-4xl font-bold text-gray-900 mt-2">
-                {{ data.total_leads }}
-            </p>
-        </div>
+        {% if error %}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <strong class="font-bold">Erro:</strong>
+                <span class="block sm:inline">{{ error }}</span>
+            </div>
+        {% endif %}
 
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h2 class="text-sm font-medium text-gray-500 mb-3">Leads por Responsável</h2>
-            <ul class="space-y-2">
-                {% for responsavel, contagem in data.contagem_responsaveis %}
-                    <li class="flex justify-between items-center">
-                        <span class="text-gray-700">{{ responsavel }}</span>
-                        <span class="font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full text-sm">{{ contagem }}</span>
-                    </li>
-                {% else %}
-                    <li class="text-gray-500">Nenhum responsável encontrado.</li>
-                {% endfor %}
-            </ul>
-        </div>
-
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h2 class="text-sm font-medium text-gray-500 mb-3">Leads Recentes</h2>
-            <ul class="space-y-2">
-                {% for lead in data.recentes_leads %}
-                    <li class="text-gray-700 truncate">
-                        {{ lead.nome_empresa or 'Lead sem nome' }}
-                    </li>
-                {% else %}
-                    <li class="text-gray-500">Nenhum lead recente.</li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
-
-    <h2 class="text-2xl font-bold text-gray-800 mb-4">Funil de Leads</h2>
-    <div class="bg-white p-6 rounded-lg shadow-lg">
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             
-            {% for stage in stages_config %}
-                <div class="p-4 rounded-md border {{ stage.color|replace('bg', 'border') }}">
-                    <div class="font-bold text-white p-2 rounded {{ stage.color }} text-center mb-3">
-                        {{ stage.title }}
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex items-center">
+                    <div class="p-3 bg-indigo-100 rounded-full">
+                        
+                        <svg fill="#000000" xmlns="http://www.w3.org/2000/svg" class="w-9 h-9 text-indigo-600" viewBox="0 0 100 100" enable-background="new 0 0 100 100" xml:space="preserve">
+                            <ellipse cx="41.3" cy="42.3" rx="12.2" ry="13.5"/>
+                            <path d="M52.6,57.4c-3.1,2.8-7,4.5-11.3,4.5c-4.3,0-8.3-1.7-11.3-4.6c-5.5,2.5-11,5.7-11,10.7v2.1
+                                c0,2.5,2,4.5,4.5,4.5h35.7c2.5,0,4.5-2,4.5-4.5v-2.1C63.6,63,58.2,59.9,52.6,57.4z"/>
+                            <path d="M68,47.4c-0.2-0.1-0.3-0.2-0.5-0.3c-0.4-0.2-0.9-0.2-1.3,0.1c-2.1,1.3-4.6,2.1-7.2,2.1c-0.3,0-0.7,0-1,0
+                                c-0.5,1.3-1,2.6-1.7,3.7c0.4,0.2,0.9,0.3,1.4,0.6c5.7,2.5,9.7,5.6,12.5,9.8H75c2.2,0,4-1.8,4-4v-1.9C79,52.6,73.3,49.6,68,47.4z"/>
+                            <path d="M66.9,34.2c0-4.9-3.6-8.9-7.9-8.9c-2.2,0-4.1,1-5.6,2.5c3.5,3.6,5.7,8.7,5.7,14.4c0,0.3,0,0.5,0,0.8
+                                C63.4,43,66.9,39.1,66.9,34.2z"/>
+                        </svg>
                     </div>
-                    
-                    <div class="text-center">
-                        <span class="text-4xl font-bold text-gray-800">
-                            {{ data.contagem_etapas[stage.id] | default(0) }}
-                        </span>
-                        <span class="text-gray-600">Leads</span>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total de Clientes/Leads</p>
+                        <p class="text-2xl font-semibold text-gray-900">{{ data.total_leads }}</p>
                     </div>
                 </div>
-            {% endfor %}
+            </div>
 
+            {% set top_stage = data.contagem_etapas.most_common(1)[0] if data.contagem_etapas else None %}
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex items-center">
+                    <div class="p-3 bg-yellow-100 rounded-full">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-1.5A9 9 0 1112 3a9 9 0 019 9z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Etapa Principal</p>
+                        {% if top_stage %}
+                            {% set stage_info = stages_config[top_stage[0]] if top_stage[0] in stages_config else {'title': top_stage[0], 'color': 'bg-gray-500'} %}
+                            <p class="text-lg font-semibold text-gray-900 truncate">{{ stage_info.title }}</p>
+                            <p class="text-xl font-bold {{ stage_info.color | replace('500', '600') | replace('bg', 'text') }}">{{ top_stage[1] }}</p>
+                        {% else %}
+                            <p class="text-xl font-semibold text-gray-900">N/A</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex items-center">
+                    <div class="p-3 bg-teal-100 rounded-full">
+                        <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Etapas Diferentes</p>
+                        <p class="text-2xl font-semibold text-gray-900">{{ data.contagem_etapas | length }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="mb-8 border-gray-200">
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            
+            <div class="bg-white p-6 rounded-lg shadow-lg md:col-span-1">
+                <h2 class="text-sm font-medium text-gray-500 mb-3">Top 5 Responsáveis</h2>
+                <ul class="space-y-3">
+                    {% for nome, contagem in data.contagem_responsaveis %}
+                        <li class="flex justify-between items-center border-b border-gray-100 pb-1">
+                            <span class="text-sm text-gray-700 truncate">{{ nome }}</span>
+                            <span class="text-sm font-bold text-indigo-600">{{ contagem }}</span>
+                        </li>
+                    {% else %}
+                        <li class="text-gray-500">Nenhum responsável encontrado.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-lg md:col-span-2">
+                <h2 class="text-sm font-medium text-gray-500 mb-3">Recentes Adicionados (Leads e Clientes)</h2>
+                <ul class="space-y-3">
+                    {% for lead in data.recentes_leads %}
+                        <li class="flex justify-between items-center border-b border-gray-100 pb-1">
+                            <div class="flex flex-col">
+                                
+                                {# SEM LINKS DE EDIÇÃO #}
+                                <span class="font-semibold text-gray-800 truncate block">
+                                    {{ lead.nome_empresa or 'Cliente sem nome' }}
+                                </span>
+                                
+                                <span class="text-xs text-gray-500">Resp.: {{ lead.responsavel_nome }}</span>
+                            </div>
+                            
+                            {# Badge para indicar o Status e o Tipo #}
+                            {% set stage_info = stages_config[lead.etapa] if lead.etapa in stages_config else {'title': lead.etapa, 'color': 'bg-gray-500'} %}
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full 
+                                {{ stage_info.color | replace('500', '100') }} {{ stage_info.color | replace('bg', 'text') }}
+                            ">
+                                {{ lead.etapa }} ({{ lead.tipo }})
+                            </span>
+                        </li>
+                    {% else %}
+                        <li class="text-gray-500">Nenhum cliente ou lead recente encontrado.</li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
     </div>
-
-</div>
+    
 {% endblock %}

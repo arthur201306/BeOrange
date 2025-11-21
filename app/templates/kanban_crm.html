@@ -382,9 +382,11 @@
         
         // 🟢 FUNÇÃO DE PÓS-VENDA
         async function moveToPostSale() {
-            hideContextMenu();
+            console.log(contextMenu.getAttribute('data-lead-id'));
 
             const leadId = contextMenu.getAttribute('data-lead-id');
+            
+            hideContextMenu();
 
             if (!leadId) return; 
 
@@ -414,6 +416,8 @@
                 });
 
                 const result = await response.json();
+
+                console.log(result);
 
                 if (result.success) {
                     leadToMove.remove();
