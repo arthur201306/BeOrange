@@ -47,5 +47,18 @@ def test_supabase_query():
     except Exception as e:
         print(f"Erro ao consultar os dados: {e}")
 
+def fetch_history_data():
+    """ Busca os registros de histórico em uma tabela específica para um dado cliente. """
+    try:
+        # Busca ordenando pela data da ação mais recente primeiro
+        response = supabase.table("historico_acoes").select(
+           "*"
+        ).eq("lead_id", "3").execute()
+        
+        print(response.data)
+    except Exception as e:
+        print(f"Erro ao buscar histórico em historico_acoes: {e}")
+        return []
+
 # Chama a função de teste
-test_supabase_query()
+fetch_history_data()

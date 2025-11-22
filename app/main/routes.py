@@ -561,6 +561,50 @@ def update_posvenda_action(lead_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+def fetch_history_data(supabase: Client, table_name: str, id_column: str, cliente_id: int) -> List[Dict[str, Any]]:
+    """ Busca os registros de histórico em uma tabela específica para um dado cliente. """
+    try:
+        # Busca ordenando pela data da ação mais recente primeiro
+        response = supabase.table(table_name).select(
+           "*"
+        ).eq(id_column, cliente_id).execute()
+        
+        return response.data
+    except Exception as e:
+        print(f"Erro ao buscar histórico em {table_name}: {e}")
+        return []
+
+@main_bp.route('/historico/<string:tipo_cliente>/<int:cliente_id>')
+def view_history(tipo_cliente: str, cliente_id: int):
+    """ 
+    Renderiza a página de histórico de auditoria para um cliente (Lead ou Pós-Venda).
+    
+    tipo_cliente deve ser 'lead' ou 'posvenda'.
+    """
+    supabase = get_supabase()
+    history_data = []
+    page_title = "Histórico de Ações"
+    
+    if tipo_cliente == 'lead':
+        # ID do Lead na tabela 'clientes' e 'historico_acoes' é 'lead_id'
+        history_data = fetch_history_data(supabase, 'historico_acoes', 'lead_id', cliente_id)
+        
+
+    elif tipo_cliente == 'posvenda':
+        # ID do Cliente na tabela 'clientes_posvenda' e 'historico_posvenda' é 'cliente_id'
+        history_data = fetch_history_data(supabase, 'historico_posvenda', 'cliente_id', cliente_id)
+        page_title = f"Histórico do Cliente Pós-Venda ID {cliente_id}"
+             
+    else:
+        abort(404, "Tipo de cliente inválido. Use 'lead' ou 'posvenda'.")
+
+    return render_template(
+        'history_view.html',
+        page_title=page_title,
+        history_data=history_data, # ESTA VARIÁVEL PRECISA CONTER OS DADOS
+    )
+
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------- #
 
 @main_bp.route('/clientes')

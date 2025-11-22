@@ -143,6 +143,8 @@
         const areasColors = {{ areas_colors_json | default({}) | tojson | safe }};
         const defaultAreaColor = areasColors['default'] || 'text-gray-800 bg-gray-100';
 
+        const historyUrlTemplate = '/historico/posvenda/LEAD_ID_PLACEHOLDER';
+
         // --- LÓGICA DE ESTADO DO MODAL ---
         const modal = document.getElementById('confirmation-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -467,12 +469,16 @@
 
             // Ação para o botão "Histórico"
             contextMenuHistory.addEventListener('click', (e) => {
+                console.log("CLICOU")
                 e.preventDefault();
                 e.stopPropagation(); 
-                
-                const clientId = contextMenu.getAttribute('data-client-id');
-                if (clientId) {
-                    alert(`Abrir histórico do Cliente Pós-Venda ID: ${clientId}`);
+                const leadId = contextMenu.getAttribute('data-client-id');
+                console.log("LEAD ID:", leadId)
+                if (leadId) {
+                    // Agora, 'historyUrlTemplate' é apenas uma string literal no JS
+                    const finalUrl = historyUrlTemplate.replace('LEAD_ID_PLACEHOLDER', leadId); 
+                    console.log(finalUrl);
+                    window.location.href = finalUrl;
                 }
                 hideContextMenu();
             });

@@ -125,6 +125,7 @@
         const serverError = {{ error | tojson }};
         const areasColors = {{ areas_colors_json | tojson }};
         const defaultAreaColor = areasColors['default'] || 'text-gray-800 bg-gray-100';
+        const historyUrlTemplate = '/historico/lead/LEAD_ID_PLACEHOLDER';
         
         // 🚨 CONFIGURAÇÃO: O ID do estágio final em minúsculas
         const FINALIZED_STAGE_ID = 'finalizado'; 
@@ -496,12 +497,24 @@
                 hideContextMenu();
             });
 
+            // contextMenuHistory.addEventListener('click', (e) => {
+            //     e.preventDefault();
+            //     e.stopPropagation(); 
+            //     const leadId = contextMenu.getAttribute('data-lead-id');
+            //     if (leadId) {
+            //         alert(`Abrir histórico do Lead ID: ${leadId}`);
+            //     }
+            //     hideContextMenu();
+            // });
+
             contextMenuHistory.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation(); 
                 const leadId = contextMenu.getAttribute('data-lead-id');
                 if (leadId) {
-                    alert(`Abrir histórico do Lead ID: ${leadId}`);
+                    // Agora, 'historyUrlTemplate' é apenas uma string literal no JS
+                    const finalUrl = historyUrlTemplate.replace('LEAD_ID_PLACEHOLDER', leadId); 
+                    window.location.href = finalUrl;
                 }
                 hideContextMenu();
             });
